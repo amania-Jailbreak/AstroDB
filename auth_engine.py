@@ -2,11 +2,34 @@
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
+import os
+from dotenv import load_dotenv, set_key
+
+# .envファイルから環境変数を読み込む
+load_dotenv()
+
+ENV_FILE_PATH = ".env"
+
+def get_or_generate_jwt_secret_key() -> str:
+    """
+    .envファイルからJWTの秘密鍵を読み込む。
+    キーが存在しない場合は、新しいキーを生成して.envファイルに保存する。
+    """
+    key = os.getenv("JWT_SECRET_KEY")
+    if key:
+        return key
+
+    # 新しいキーを生成 (ランダムな文字列)
+    new_key = os.urandom(32).hex()
+    
+    # .envファイルにキーを保存
+    set_key(ENV_FILE_PATH, "JWT_SECRET_KEY", new_key)
+    
+    print("新しいJWT秘密鍵を生成し、.envファイルに保存しました。")
+    return new_key
 
 # --- 設定 --- 
-# JWTの署名に使う秘密鍵。本来は.envから読み込むべき。
-# ここでは仮の値を設定し、後で.envに移動します。
-SECRET_KEY = "a_very_secret_key_that_should_be_in_env_file"
+SECRET_KEY = get_or_generate_jwt_secret_key()
 ALGORITHM = "HS256"  # 署名アルゴリズム
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # トークンの有効期間
 
