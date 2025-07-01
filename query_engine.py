@@ -1,6 +1,55 @@
 
+from typing import Any
+
 class QueryEngine:
     """ドキュメントがクエリ条件に一致するかを判断するエンジン"""
+
+    def _match_field(self, doc_value: Any, query_value: Any) -> bool:
+        """
+        単一のドキュメントフィールドがクエリ値に一致するかをチェックするヘルパーメソッド。
+        """
+        if isinstance(query_value, dict):
+            # 演算子 ($gt, $lt など) を含むクエリ
+            for op, op_value in query_value.items():
+                if op == "$gt":
+                    if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value > op_value):
+                        return False
+                elif op == "$lt":
+                    if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value < op_value):
+                        return False
+                elif op == "$gte":
+                    if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value >= op_value):
+                        return False
+                elif op == "$lte":
+                    if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value <= op_value):
+                        return False
+                elif op == "$ne":
+                    if doc_value == op_value:
+                        return False
+                elif op == "$in":
+                    if not isinstance(op_value, list):
+                        return False # $in の値はリストである必要がある
+                    if isinstance(doc_value, list):
+                        if not any(item in op_value for item in doc_value):
+                            return False
+                    elif doc_value not in op_value:
+                        return False
+                elif op == "$nin":
+                    if not isinstance(op_value, list):
+                        return False # $nin の値はリストである必要がある
+                    if isinstance(doc_value, list):
+                        if any(item in op_value for item in doc_value):
+                            return False
+                    elif doc_value in op_value:
+                        return False
+                else:
+                    # 未知の演算子
+                    return False
+        else:
+            # シンプルな値の一致
+            if doc_value != query_value:
+                return False
+        return True
 
     def matches(self, document: dict, query: dict) -> bool:
         """
@@ -10,53 +59,26 @@ class QueryEngine:
         if not isinstance(query, dict):
             return False # クエリは辞書である必要がある
 
+        if "$and" in query:
+            # $and 演算子: すべてのサブクエリがTrueである必要がある
+            for sub_query in query["$and"]:
+                if not self.matches(document, sub_query):
+                    return False
+            return True
+
+        if "$or" in query:
+            # $or 演算子: いずれかのサブクエリがTrueである必要がある
+            for sub_query in query["$or"]:
+                if self.matches(document, sub_query):
+                    return True
+            return False
+
         for key, value in query.items():
             if key not in document:
                 return False
-
-            doc_value = document[key]
-
-            if isinstance(value, dict):
-                # 演算子 ($gt, $lt など) を含むクエリ
-                for op, op_value in value.items():
-                    if op == "$gt":
-                        if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value > op_value):
-                            return False
-                    elif op == "$lt":
-                        if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value < op_value):
-                            return False
-                    elif op == "$gte":
-                        if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value >= op_value):
-                            return False
-                    elif op == "$lte":
-                        if not (isinstance(doc_value, (int, float)) and isinstance(op_value, (int, float)) and doc_value <= op_value):
-                            return False
-                    elif op == "$ne":
-                        if doc_value == op_value:
-                            return False
-                    elif op == "$in":
-                        if not isinstance(op_value, list):
-                            return False # $in の値はリストである必要がある
-                        if isinstance(doc_value, list):
-                            if not any(item in op_value for item in doc_value):
-                                return False
-                        elif doc_value not in op_value:
-                            return False
-                    elif op == "$nin":
-                        if not isinstance(op_value, list):
-                            return False # $nin の値はリストである必要がある
-                        if isinstance(doc_value, list):
-                            if any(item in op_value for item in doc_value):
-                                return False
-                        elif doc_value in op_value:
-                            return False
-                    else:
-                        # 未知の演算子
-                        return False
-            else:
-                # シンプルな値の一致
-                if doc_value != value:
-                    return False
+            
+            if not self._match_field(document[key], value):
+                return False
         return True
 
 # --- シングルトンインスタンス ---
