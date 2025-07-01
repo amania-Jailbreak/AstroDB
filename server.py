@@ -1,6 +1,4 @@
 
-import logging.handlers
-import queue
 import ujson
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Any
@@ -12,12 +10,6 @@ from contextlib import asynccontextmanager
 # ロガーの設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# ロギングキューの設定
-log_queue = queue.Queue()
-queue_handler = logging.handlers.QueueHandler(log_queue)
-root_logger = logging.getLogger()
-root_logger.addHandler(queue_handler)
 
 # プロジェクトのモジュールをインポート
 import auth_engine
@@ -34,10 +26,6 @@ async def save_database_periodically(interval_minutes: int):
 async def lifespan(app: FastAPI):
     # アプリケーション起動時の処理
     logger.info("サーバーが起動しました。")
-    # ロギングリスナーを開始
-    listener = logging.handlers.QueueListener(log_queue, *root_logger.handlers)
-    listener.start()
-
     # 定期保存タスクを開始
     save_task = asyncio.create_task(save_database_periodically(interval_minutes=1)) # 1分ごとに保存
     try:
@@ -53,9 +41,12 @@ async def lifespan(app: FastAPI):
         db_instance.save_to_disk() # 最終保存
         logger.info("シャットダウン処理が完了しました。")
 
+<<<<<<< HEAD
         # ロギングリスナーを停止
         listener.stop()
 
+=======
+>>>>>>> parent of a327377 (feat: 非同期ロギングを実装)
 app = FastAPI(lifespan=lifespan)
 
 async def handle_command(websocket: WebSocket, data: dict) -> dict:
