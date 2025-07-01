@@ -5,7 +5,9 @@ import logging
 from dotenv import load_dotenv, set_key
 
 # ロガーの設定
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # プロジェクトのルートディレクトリをPythonのパスに追加
@@ -164,22 +166,35 @@ def test_query_engine_simple_match():
     doc1 = {"title": "AstroDB", "author": "Amani", "year": 2025}
     doc2 = {"title": "WebApp", "author": "Amani", "year": 2024}
     query1 = {"author": "Amani"}
-    assert engine.matches(doc1, query1) is True, "シンプルな一致テスト (doc1) が失敗しました"
-    assert engine.matches(doc2, query1) is True, "シンプルな一致テスト (doc2) が失敗しました"
+    assert (
+        engine.matches(doc1, query1) is True
+    ), "シンプルな一致テスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc2, query1) is True
+    ), "シンプルな一致テスト (doc2) が失敗しました"
+
 
 def test_query_engine_multiple_conditions():
     engine = query_engine.QueryEngine()
     doc1 = {"title": "AstroDB", "author": "Amani", "year": 2025}
     doc2 = {"title": "WebApp", "author": "Amani", "year": 2024}
     query2 = {"author": "Amani", "year": 2025}
-    assert engine.matches(doc1, query2) is True, "複数条件での一致テスト (doc1) が失敗しました"
-    assert engine.matches(doc2, query2) is False, "複数条件での一致テスト (doc2) が失敗しました"
+    assert (
+        engine.matches(doc1, query2) is True
+    ), "複数条件での一致テスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc2, query2) is False
+    ), "複数条件での一致テスト (doc2) が失敗しました"
+
 
 def test_query_engine_non_existent_key():
     engine = query_engine.QueryEngine()
     doc1 = {"title": "AstroDB", "author": "Amani", "year": 2025}
     query3 = {"status": "published"}
-    assert engine.matches(doc1, query3) is False, "存在しないキーでのテストが失敗しました"
+    assert (
+        engine.matches(doc1, query3) is False
+    ), "存在しないキーでのテストが失敗しました"
+
 
 def test_query_engine_array_exact_match():
     engine = query_engine.QueryEngine()
@@ -187,11 +202,13 @@ def test_query_engine_array_exact_match():
     query4 = {"tags": ["db", "python"]}
     assert engine.matches(doc1, query4) is True, "配列の完全一致テストが失敗しました"
 
+
 def test_query_engine_gt_operator():
     engine = query_engine.QueryEngine()
     doc1 = {"year": 2025}
     query_gt = {"year": {"$gt": 2024}}
     assert engine.matches(doc1, query_gt) is True, "$gt 演算子のテストが失敗しました"
+
 
 def test_query_engine_lt_operator():
     engine = query_engine.QueryEngine()
@@ -199,11 +216,13 @@ def test_query_engine_lt_operator():
     query_lt = {"year": {"$lt": 2025}}
     assert engine.matches(doc1, query_lt) is False, "$lt 演算子のテストが失敗しました"
 
+
 def test_query_engine_gte_operator():
     engine = query_engine.QueryEngine()
     doc1 = {"year": 2025}
     query_gte = {"year": {"$gte": 2025}}
     assert engine.matches(doc1, query_gte) is True, "$gte 演算子のテストが失敗しました"
+
 
 def test_query_engine_lte_operator():
     engine = query_engine.QueryEngine()
@@ -211,27 +230,39 @@ def test_query_engine_lte_operator():
     query_lte = {"year": {"$lte": 2024}}
     assert engine.matches(doc1, query_lte) is False, "$lte 演算子のテストが失敗しました"
 
+
 def test_query_engine_ne_operator():
     engine = query_engine.QueryEngine()
     doc1 = {"author": "Amani"}
     query_ne = {"author": {"$ne": "Amani"}}
     assert engine.matches(doc1, query_ne) is False, "$ne 演算子のテストが失敗しました"
 
+
 def test_query_engine_in_operator():
     engine = query_engine.QueryEngine()
     doc1 = {"tags": ["db", "python"]}
     doc2 = {"tags": ["web", "js"]}
     query_in = {"tags": {"$in": ["js", "sql"]}}
-    assert engine.matches(doc1, query_in) is False, "$in 演算子のテスト (doc1) が失敗しました"
-    assert engine.matches(doc2, query_in) is True, "$in 演算子のテスト (doc2) が失敗しました"
+    assert (
+        engine.matches(doc1, query_in) is False
+    ), "$in 演算子のテスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc2, query_in) is True
+    ), "$in 演算子のテスト (doc2) が失敗しました"
+
 
 def test_query_engine_nin_operator():
     engine = query_engine.QueryEngine()
     doc1 = {"tags": ["db", "python"]}
     doc2 = {"tags": ["web", "js"]}
     query_nin = {"tags": {"$nin": ["js", "sql"]}}
-    assert engine.matches(doc1, query_nin) is True, "$nin 演算子のテスト (doc1) が失敗しました"
-    assert engine.matches(doc2, query_nin) is False, "$nin 演算子のテスト (doc2) が失敗しました"
+    assert (
+        engine.matches(doc1, query_nin) is True
+    ), "$nin 演算子のテスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc2, query_nin) is False
+    ), "$nin 演算子のテスト (doc2) が失敗しました"
+
 
 def test_query_engine_and_operator():
     engine = query_engine.QueryEngine()
@@ -240,7 +271,10 @@ def test_query_engine_and_operator():
     assert engine.matches(doc, query) is True, "$and 演算子のテストが失敗しました"
 
     query_false = {"$and": [{"age": {"$gt": 35}}, {"city": "Tokyo"}]}
-    assert engine.matches(doc, query_false) is False, "$and 演算子の失敗テストが失敗しました"
+    assert (
+        engine.matches(doc, query_false) is False
+    ), "$and 演算子の失敗テストが失敗しました"
+
 
 def test_query_engine_or_operator():
     engine = query_engine.QueryEngine()
@@ -249,47 +283,69 @@ def test_query_engine_or_operator():
     assert engine.matches(doc, query) is True, "$or 演算子のテストが失敗しました"
 
     query_false = {"$or": [{"age": {"$lt": 25}}, {"city": "Osaka"}]}
-    assert engine.matches(doc, query_false) is False, "$or 演算子の失敗テストが失敗しました"
+    assert (
+        engine.matches(doc, query_false) is False
+    ), "$or 演算子の失敗テストが失敗しました"
+
 
 def test_query_engine_nested_and_or():
     engine = query_engine.QueryEngine()
     doc = {"name": "test", "age": 30, "city": "Tokyo", "status": "active"}
-    query = {"$and": [
-        {"$or": [{"age": {"$lt": 25}}, {"city": "Tokyo"}]},
-        {"status": "active"}
-    ]}
-    assert engine.matches(doc, query) is True, "ネストされた $and/$or 演算子のテストが失敗しました"
+    query = {
+        "$and": [
+            {"$or": [{"age": {"$lt": 25}}, {"city": "Tokyo"}]},
+            {"status": "active"},
+        ]
+    }
+    assert (
+        engine.matches(doc, query) is True
+    ), "ネストされた $and/$or 演算子のテストが失敗しました"
 
-    query_false = {"$and": [
-        {"$or": [{"age": {"$lt": 25}}, {"city": "Osaka"}]},
-        {"status": "active"}
-    ]}
-    assert engine.matches(doc, query_false) is False, "ネストされた $and/$or 演算子の失敗テストが失敗しました"
+    query_false = {
+        "$and": [
+            {"$or": [{"age": {"$lt": 25}}, {"city": "Osaka"}]},
+            {"status": "active"},
+        ]
+    }
+    assert (
+        engine.matches(doc, query_false) is False
+    ), "ネストされた $and/$or 演算子の失敗テストが失敗しました"
 
-def test_query_engine_nested_and_or():
-    engine = query_engine.QueryEngine()
-    doc = {"name": "test", "age": 30, "city": "Tokyo", "status": "active"}
-    query = {"$and": [
-        {"$or": [{"age": {"$lt": 25}}, {"city": "Tokyo"}]},
-        {"status": "active"}
-    ]}
-    assert engine.matches(doc, query) is True, "ネストされた $and/$or 演算子のテストが失敗しました"
-
-    query_false = {"$and": [
-        {"$or": [{"age": {"$lt": 25}}, {"city": "Osaka"}]},
-        {"status": "active"}
-    ]}
-    assert engine.matches(doc, query_false) is False, "ネストされた $and/$or 演算子の失敗テストが失敗しました"
 
 def test_query_engine_regex_operator():
     engine = query_engine.QueryEngine()
-    doc1 = {"title": "AstroDB", "author": "Amani", "year": 2025, "tags": ["db", "python"], "user": {"profile": {"age": 30, "city": "Tokyo"}}}
-    doc2 = {"title": "WebApp", "author": "Amani", "year": 2024, "tags": ["web", "js"], "user": {"profile": {"age": 25, "city": "Osaka"}}}
-    doc3 = {"title": "AstroDB Guide", "author": "Gemini", "year": 2025, "tags": ["db", "guide"], "user": {"profile": {"age": 30, "city": "Tokyo"}}}
+    doc1 = {
+        "title": "AstroDB",
+        "author": "Amani",
+        "year": 2025,
+        "tags": ["db", "python"],
+        "user": {"profile": {"age": 30, "city": "Tokyo"}},
+    }
+    doc2 = {
+        "title": "WebApp",
+        "author": "Amani",
+        "year": 2024,
+        "tags": ["web", "js"],
+        "user": {"profile": {"age": 25, "city": "Osaka"}},
+    }
+    doc3 = {
+        "title": "AstroDB Guide",
+        "author": "Gemini",
+        "year": 2025,
+        "tags": ["db", "guide"],
+        "user": {"profile": {"age": 30, "city": "Tokyo"}},
+    }
     query_regex = {"title": {"$regex": "^Astro"}}
-    assert engine.matches(doc1, query_regex) is True, "$regex 演算子のテスト (doc1) が失敗しました"
-    assert engine.matches(doc3, query_regex) is True, "$regex 演算子のテスト (doc3) が失敗しました"
-    assert engine.matches(doc2, query_regex) is False, "$regex 演算子のテスト (doc2) が失敗しました"
+    assert (
+        engine.matches(doc1, query_regex) is True
+    ), "$regex 演算子のテスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc3, query_regex) is True
+    ), "$regex 演算子のテスト (doc3) が失敗しました"
+    assert (
+        engine.matches(doc2, query_regex) is False
+    ), "$regex 演算子のテスト (doc2) が失敗しました"
+
 
 def test_query_engine_size_operator():
     engine = query_engine.QueryEngine()
@@ -297,21 +353,156 @@ def test_query_engine_size_operator():
     doc6 = {"title": "Mixed Tags", "tags": ["python", "ai", "ml"]}
     doc7 = {"title": "Single Tag", "tags": ["python"]}
     query_size = {"tags": {"$size": 2}}
-    assert engine.matches(doc1, query_size) is True, "$size 演算子のテスト (doc1) が失敗しました"
-    assert engine.matches(doc6, query_size) is False, "$size 演算子のテスト (doc6) が失敗しました"
-    assert engine.matches(doc7, query_size) is False, "$size 演算子のテスト (doc7) が失敗しました"
+    assert (
+        engine.matches(doc1, query_size) is True
+    ), "$size 演算子のテスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc6, query_size) is False
+    ), "$size 演算子のテスト (doc6) が失敗しました"
+    assert (
+        engine.matches(doc7, query_size) is False
+    ), "$size 演算子のテスト (doc7) が失敗しました"
+
 
 def test_query_engine_exists_operator():
     engine = query_engine.QueryEngine()
     doc1 = {"title": "AstroDB", "author": "Amani"}
-    doc5 = {"title": "Array Test", "items": [{"id": 1, "value": "A"}, {"id": 2, "value": "B"}]}
+    doc5 = {
+        "title": "Array Test",
+        "items": [{"id": 1, "value": "A"}, {"id": 2, "value": "B"}],
+    }
     query_exists_true = {"author": {"$exists": True}}
-    assert engine.matches(doc1, query_exists_true) is True, "$exists 演算子のテスト (True) が失敗しました"
-    assert engine.matches(doc5, query_exists_true) is False, "$exists 演算子のテスト (False) が失敗しました"
+    assert (
+        engine.matches(doc1, query_exists_true) is True
+    ), "$exists 演算子のテスト (True) が失敗しました"
+    assert (
+        engine.matches(doc5, query_exists_true) is False
+    ), "$exists 演算子のテスト (False) が失敗しました"
     query_exists_false = {"non_existent_field": {"$exists": False}}
-    assert engine.matches(doc1, query_exists_false) is True, "$exists 演算子のテスト (非存在) が失敗しました"
+    assert (
+        engine.matches(doc1, query_exists_false) is True
+    ), "$exists 演算子のテスト (非存在) が失敗しました"
 
-def main():    logger.info("=====================================")    logger.info("  AstroDB 全テスト実行 (Pytestなし)")    logger.info("=====================================")    # auth_engine.py のテスト    # test_auth_engine_get_or_generate_jwt_secret_key は特殊なセットアップが必要    logger.info("\n--- auth_engine: JWT秘密鍵の生成と読み込み ---")    try:        env_path = auth_engine.ENV_FILE_PATH        if os.path.exists(env_path):            os.remove(env_path)        # 環境変数をクリア        if "JWT_SECRET_KEY" in os.environ:            del os.environ["JWT_SECRET_KEY"]        test_auth_engine_get_or_generate_jwt_secret_key()        logger.info("auth_engine: JWT秘密鍵の生成と読み込み: 成功")    except AssertionError as e:        logger.error(f"auth_engine: JWT秘密鍵の生成と読み込み: 失敗 - {e}")    except Exception as e:        logger.error(f"auth_engine: JWT秘密鍵の生成と読み込み: エラー - {e}")    finally:        if os.path.exists(env_path):            os.remove(env_path)
+
+def test_query_engine_nested_and_or():
+    engine = query_engine.QueryEngine()
+    doc = {"name": "test", "age": 30, "city": "Tokyo", "status": "active"}
+    query = {
+        "$and": [
+            {"$or": [{"age": {"$lt": 25}}, {"city": "Tokyo"}]},
+            {"status": "active"},
+        ]
+    }
+    assert (
+        engine.matches(doc, query) is True
+    ), "ネストされた $and/$or 演算子のテストが失敗しました"
+
+    query_false = {
+        "$and": [
+            {"$or": [{"age": {"$lt": 25}}, {"city": "Osaka"}]},
+            {"status": "active"},
+        ]
+    }
+    assert (
+        engine.matches(doc, query_false) is False
+    ), "ネストされた $and/$or 演算子の失敗テストが失敗しました"
+
+
+def test_query_engine_regex_operator():
+    engine = query_engine.QueryEngine()
+    doc1 = {
+        "title": "AstroDB",
+        "author": "Amani",
+        "year": 2025,
+        "tags": ["db", "python"],
+        "user": {"profile": {"age": 30, "city": "Tokyo"}},
+    }
+    doc2 = {
+        "title": "WebApp",
+        "author": "Amani",
+        "year": 2024,
+        "tags": ["web", "js"],
+        "user": {"profile": {"age": 25, "city": "Osaka"}},
+    }
+    doc3 = {
+        "title": "AstroDB Guide",
+        "author": "Gemini",
+        "year": 2025,
+        "tags": ["db", "guide"],
+        "user": {"profile": {"age": 30, "city": "Tokyo"}},
+    }
+    query_regex = {"title": {"$regex": "^Astro"}}
+    assert (
+        engine.matches(doc1, query_regex) is True
+    ), "$regex 演算子のテスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc3, query_regex) is True
+    ), "$regex 演算子のテスト (doc3) が失敗しました"
+    assert (
+        engine.matches(doc2, query_regex) is False
+    ), "$regex 演算子のテスト (doc2) が失敗しました"
+
+
+def test_query_engine_size_operator():
+    engine = query_engine.QueryEngine()
+    doc1 = {"title": "AstroDB", "tags": ["db", "python"]}
+    doc6 = {"title": "Mixed Tags", "tags": ["python", "ai", "ml"]}
+    doc7 = {"title": "Single Tag", "tags": ["python"]}
+    query_size = {"tags": {"$size": 2}}
+    assert (
+        engine.matches(doc1, query_size) is True
+    ), "$size 演算子のテスト (doc1) が失敗しました"
+    assert (
+        engine.matches(doc6, query_size) is False
+    ), "$size 演算子のテスト (doc6) が失敗しました"
+    assert (
+        engine.matches(doc7, query_size) is False
+    ), "$size 演算子のテスト (doc7) が失敗しました"
+
+
+def test_query_engine_exists_operator():
+    engine = query_engine.QueryEngine()
+    doc1 = {"title": "AstroDB", "author": "Amani"}
+    doc5 = {
+        "title": "Array Test",
+        "items": [{"id": 1, "value": "A"}, {"id": 2, "value": "B"}],
+    }
+    query_exists_true = {"author": {"$exists": True}}
+    assert (
+        engine.matches(doc1, query_exists_true) is True
+    ), "$exists 演算子のテスト (True) が失敗しました"
+    assert (
+        engine.matches(doc5, query_exists_true) is False
+    ), "$exists 演算子のテスト (False) が失敗しました"
+    query_exists_false = {"non_existent_field": {"$exists": False}}
+    assert (
+        engine.matches(doc1, query_exists_false) is True
+    ), "$exists 演算子のテスト (非存在) が失敗しました"
+
+
+def main():
+    logger.info("=====================================")
+    logger.info("  AstroDB 全テスト実行 (Pytestなし)")
+    logger.info("=====================================")
+    # auth_engine.py のテスト
+    # # test_auth_engine_get_or_generate_jwt_secret_key は特殊なセットアップが必要
+    logger.info("\n--- auth_engine: JWT秘密鍵の生成と読み込み ---")
+    try:
+        env_path = auth_engine.ENV_FILE_PATH
+        if os.path.exists(env_path):
+            os.remove(env_path)
+            # 環境変数をクリア
+            if "JWT_SECRET_KEY" in os.environ:
+                del os.environ["JWT_SECRET_KEY"]
+            test_auth_engine_get_or_generate_jwt_secret_key()
+            logger.info("auth_engine: JWT秘密鍵の生成と読み込み: 成功")
+    except AssertionError as e:
+        logger.error(f"auth_engine: JWT秘密鍵の生成と読み込み: 失敗 - {e}")
+    except Exception as e:
+        logger.error(f"auth_engine: JWT秘密鍵の生成と読み込み: エラー - {e}")
+    finally:
+        if os.path.exists(env_path):
+            os.remove(env_path)
 
     setup_auth_engine_test()
     run_test(
@@ -342,8 +533,12 @@ def main():    logger.info("=====================================")    logger.in
     # query_engine.py のテスト
     logger.info("\n--- query_engine.py のテスト ---")
     run_test(test_query_engine_simple_match, "query_engine: シンプルな一致テスト")
-    run_test(test_query_engine_multiple_conditions, "query_engine: 複数条件での一致テスト")
-    run_test(test_query_engine_non_existent_key, "query_engine: 存在しないキーでのテスト")
+    run_test(
+        test_query_engine_multiple_conditions, "query_engine: 複数条件での一致テスト"
+    )
+    run_test(
+        test_query_engine_non_existent_key, "query_engine: 存在しないキーでのテスト"
+    )
     run_test(test_query_engine_array_exact_match, "query_engine: 配列の完全一致テスト")
     run_test(test_query_engine_gt_operator, "query_engine: $gt 演算子のテスト")
     run_test(test_query_engine_lt_operator, "query_engine: $lt 演算子のテスト")
@@ -354,7 +549,10 @@ def main():    logger.info("=====================================")    logger.in
     run_test(test_query_engine_nin_operator, "query_engine: $nin 演算子のテスト")
     run_test(test_query_engine_and_operator, "query_engine: $and 演算子のテスト")
     run_test(test_query_engine_or_operator, "query_engine: $or 演算子のテスト")
-    run_test(test_query_engine_nested_and_or, "query_engine: ネストされた $and/$or 演算子のテスト")
+    run_test(
+        test_query_engine_nested_and_or,
+        "query_engine: ネストされた $and/$or 演算子のテスト",
+    )
     run_test(test_query_engine_regex_operator, "query_engine: $regex 演算子のテスト")
     run_test(test_query_engine_size_operator, "query_engine: $size 演算子のテスト")
     run_test(test_query_engine_exists_operator, "query_engine: $exists 演算子のテスト")
@@ -366,4 +564,3 @@ def main():    logger.info("=====================================")    logger.in
 
 if __name__ == "__main__":
     main()
-

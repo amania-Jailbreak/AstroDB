@@ -156,10 +156,7 @@ class QueryEngine:
             # ドット記法を処理
             doc_value = self._get_nested_value(document, key)
 
-            if (
-                doc_value is None and key not in document
-            ):  # ネストされたパスが見つからない、かつトップレベルにもキーがない
-                return False
+            
 
             if not self._match_field(doc_value, value):
                 return False
