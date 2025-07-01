@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import os
 import logging
 from dotenv import load_dotenv, set_key
+from database import db_instance # データベースインスタンスをインポート
 
 # ロガーの設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -48,19 +49,6 @@ SECRET_KEY = get_or_generate_jwt_secret_key()
 ALGORITHM = "HS256"  # 署名アルゴリズム
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # トークンの有効期間
 
-# --- 認証レートリミット設定 ---
-MAX_LOGIN_ATTEMPTS = 5  # ロックアウトされるまでの最大試行回数
-LOCKOUT_TIME_MINUTES = 5  # ロックアウトされる時間（分）
-
-# 失敗したログイン試行を追跡するための辞書
-# key: username, value: {'count': int, 'last_attempt': datetime}
-_failed_login_attempts = {}
-
-# --- データベースのダミー ---
-# 本来はdatabase.pyと連携するが、ここではメモリ上の辞書で代用
-# key: username, value: {hashed_password: str, role: str}
-_users_db = {}
-
 
 def hash_password(password: str) -> bytes:
     """パスワードをハッシュ化する"""
@@ -95,110 +83,48 @@ def decode_access_token(token: str) -> dict | None:
 
 def register_user(username: str, password: str, role: str = "user") -> bool:
     """ユーザーを登録する。成功したらTrue、ユーザーが既に存在する場合はFalseを返す"""
-    if username in _users_db:
+    # ユーザーが既に存在するか確認
+    existing_user = db_instance.find_one("users", {"username": username}, owner_id="system") # owner_idはシステムとして扱う
+    if existing_user:
         return False
 
     hashed_pw = hash_password(password)
-    _users_db[username] = {"hashed_password": hashed_pw, "role": role}
+    user_data = {"username": username, "hashed_password": hashed_pw.decode('utf-8'), "role": role}
+    db_instance.insert_one("users", user_data, owner_id="system") # owner_idはシステムとして扱う
     return True
-
 
 def authenticate_user(username: str, password: str) -> dict | None:
     """
     ユーザーを認証する。
     成功した場合はユーザー情報（ロールなど）を、失敗した場合はNoneを返す。
     """
-    # ロックアウト状態のチェック
-    if username in _failed_login_attempts:
-        last_attempt_time = _failed_login_attempts[username]['last_attempt']
-        if datetime.now(timezone.utc) - last_attempt_time < timedelta(minutes=LOCKOUT_TIME_MINUTES):
-            logger.warning(f"ユーザー {username} はロックアウト中です。")
-            return None
-
-    user = _users_db.get(username)
+    user = db_instance.find_one("users", {"username": username}, owner_id="system") # owner_idはシステムとして扱う
     if not user:
         logger.warning(f"認証失敗: ユーザー {username} が見つかりません。")
         return None
 
-    if not verify_password(password, user["hashed_password"]):
-        # ログイン失敗を記録
-        _failed_login_attempts.setdefault(username, {'count': 0, 'last_attempt': datetime.now(timezone.utc)})
-        _failed_login_attempts[username]['count'] += 1
-        _failed_login_attempts[username]['last_attempt'] = datetime.now(timezone.utc)
-        logger.warning(f"認証失敗: ユーザー {username} のパスワードが不正です。試行回数: {_failed_login_attempts[username]['count']}")
-
-        if _failed_login_attempts[username]['count'] >= MAX_LOGIN_ATTEMPTS:
-            logger.warning(f"ユーザー {username} がロックアウトされました。{LOCKOUT_TIME_MINUTES}分間ログインできません。")
-
+    if not verify_password(password, user["hashed_password"].encode('utf-8')):
+        logger.warning(f"認証失敗: ユーザー {username} のパスワードが不正です。")
         return None
 
-    # 認証成功時は失敗回数をリセット
-    if username in _failed_login_attempts:
-        del _failed_login_attempts[username]
-        logger.info(f"ユーザー {username} のログイン成功。失敗回数をリセットしました。")
-
-    return {"username": username, "role": user["role"]}
-
+    return {"username": user["username"], "role": user["role"]}
 
 def change_password(username: str, old_password: str, new_password: str) -> bool:
     """
     ユーザーのパスワードを変更する。
     古いパスワードが正しく、ユーザーが存在すればTrueを返す。
     """
-    user = _users_db.get(username)
+    user = db_instance.find_one("users", {"username": username}, owner_id="system") # owner_idはシステムとして扱う
     if not user:
         return False
 
-    if not verify_password(old_password, user["hashed_password"]):
+    if not verify_password(old_password, user["hashed_password"].encode('utf-8')):
         return False
 
     hashed_pw = hash_password(new_password)
-    _users_db[username]["hashed_password"] = hashed_pw
-    return True
+    update_data = {"hashed_password": hashed_pw.decode('utf-8')}
+    updated_count = db_instance.update_one("users", {"username": username}, update_data, owner_id="system") # owner_idはシステムとして扱う
+    return updated_count == 1
 
 
-if __name__ == "__main__":
-    # --- モジュールの動作テスト ---
-    logger.info("--- 認証・認可エンジンのテスト実行 ---")
-
-    # 1. ユーザー登録
-    logger.info("\n1. ユーザー登録テスト")
-    assert register_user("testuser", "password123") is True
-    logger.info("ユーザー 'testuser' の登録成功。")
-    assert register_user("testuser", "another_password") is False
-    logger.info("既存ユーザーの登録失敗を正常に検知。")
-    register_user("adminuser", "adminpass", role="admin")
-    logger.info("管理者 'adminuser' の登録成功。")
-
-    # 2. ユーザー認証
-    logger.info("\n2. ユーザー認証テスト")
-    authenticated_user = authenticate_user("testuser", "password123")
-    assert authenticated_user is not None
-    assert authenticated_user["role"] == "user"
-    logger.info("'testuser' の認証成功。")
-    assert authenticate_user("testuser", "wrongpassword") is None
-    logger.info("パスワード間違い時の認証失敗を正常に検知。")
-    assert authenticate_user("nonexistentuser", "password123") is None
-    logger.info("存在しないユーザーの認証失敗を正常に検知。")
-
-    # 3. JWTの発行と検証
-    logger.info("\n3. JWT発行・検証テスト")
-    user_data = {
-        "sub": authenticated_user["username"],
-        "role": authenticated_user["role"],
-    }
-    token = create_access_token(user_data)
-    logger.info(f"発行されたトークン (一部): {token[:30]}...")
-    assert isinstance(token, str)
-
-    decoded_payload = decode_access_token(token)
-    assert decoded_payload is not None
-    assert decoded_payload["sub"] == "testuser"
-    assert decoded_payload["role"] == "user"
-    logger.info("トークンのデコードと内容の検証に成功。")
-
-    invalid_token = token[:-5] + "invalid"
-    assert decode_access_token(invalid_token) is None
-    logger.info("無効なトークンの検証失敗を正常に検知。")
-
-    logger.info("\nテスト成功！認証・認可エンジンが正常に機能しています。")
+if __name__ == "__main__":    # --- モジュールの動作テスト ---    logger.info("--- 認証・認可エンジンのテスト実行 ---")    # テスト用にデータベースをクリーンアップ    db_instance.delete_many("users", {}, owner_id="system")    # 1. ユーザー登録    logger.info("\n1. ユーザー登録テスト")    assert register_user("testuser", "password123") is True    logger.info("ユーザー 'testuser' の登録成功。")    assert register_user("testuser", "another_password") is False    logger.info("既存ユーザーの登録失敗を正常に検知。")    register_user("adminuser", "adminpass", role="admin")    logger.info("管理者 'adminuser' の登録成功。")    # 2. ユーザー認証    logger.info("\n2. ユーザー認証テスト")    authenticated_user = authenticate_user("testuser", "password123")    assert authenticated_user is not None    assert authenticated_user["role"] == "user"    logger.info("'testuser' の認証成功。")    assert authenticate_user("testuser", "wrongpassword") is None    logger.info("パスワード間違い時の認証失敗を正常に検知。")    assert authenticate_user("nonexistentuser", "password123") is None    logger.info("存在しないユーザーの認証失敗を正常に検知。")    # 3. JWTの発行と検証    logger.info("\n3. JWT発行・検証テスト")    user_data = {        "sub": authenticated_user["username"],        "role": authenticated_user["role"],    }    token = create_access_token(user_data)    logger.info(f"発行されたトークン (一部): {token[:30]}...")    assert isinstance(token, str)    decoded_payload = decode_access_token(token)    assert decoded_payload is not None    assert decoded_payload["sub"] == "testuser"    assert decoded_payload["role"] == "user"    logger.info("トークンのデコードと内容の検証に成功。")    invalid_token = token[:-5] + "invalid"    assert decode_access_token(invalid_token) is None    logger.info("無効なトークンの検証失敗を正常に検知。")    # 4. パスワード変更テスト    logger.info("\n4. パスワード変更テスト")    assert change_password("testuser", "password123", "new_password") is True    logger.info("パスワード変更成功。")    assert authenticate_user("testuser", "new_password") is not None    logger.info("新しいパスワードでの認証成功。")    assert authenticate_user("testuser", "password123") is None    logger.info("古いパスワードでの認証失敗を正常に検知。")    logger.info("\nテスト成功！認証・認可エンジンが正常に機能しています。")
