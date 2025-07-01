@@ -1,4 +1,3 @@
-
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -6,9 +5,10 @@ import os
 from dotenv import load_dotenv, set_key
 
 # .envファイルから環境変数を読み込む
-load_dotenv()
+load_dotenv(override=True)
 
 ENV_FILE_PATH = ".env"
+
 
 def get_or_generate_jwt_secret_key() -> str:
     """
@@ -21,19 +21,29 @@ def get_or_generate_jwt_secret_key() -> str:
 
     # 新しいキーを生成 (ランダムな文字列)
     new_key = os.urandom(32).hex()
-    
+
     # .envファイルにキーを保存
     set_key(ENV_FILE_PATH, "JWT_SECRET_KEY", new_key)
-    
-    print("新しいJWT秘密鍵を生成し、.envファイルに保存しました。")
+
+    # 保存されているか確認
+    saved_key = os.getenv("JWT_SECRET_KEY")
+    if saved_key != new_key:
+        # .envファイルに書き込んだ後、再度読み込む必要がある場合がある
+        load_dotenv(override=True)
+        saved_key = os.getenv("JWT_SECRET_KEY")
+        if saved_key != new_key:
+            print("JWT秘密鍵の保存に失敗しました。")
+    else:
+        print("新しいJWT秘密鍵を生成し、.envファイルに保存しました。")
     return new_key
 
-# --- 設定 --- 
+
+# --- 設定 ---
 SECRET_KEY = get_or_generate_jwt_secret_key()
 ALGORITHM = "HS256"  # 署名アルゴリズム
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # トークンの有効期間
 
-# --- データベースのダミー --- 
+# --- データベースのダミー ---
 # 本来はdatabase.pyと連携するが、ここではメモリ上の辞書で代用
 # key: username, value: {hashed_password: str, role: str}
 _users_db = {}
@@ -41,11 +51,13 @@ _users_db = {}
 
 def hash_password(password: str) -> bytes:
     """パスワードをハッシュ化する"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
 
 def verify_password(plain_password: str, hashed_password: bytes) -> bool:
     """平文パスワードがハッシュ化されたパスワードと一致するか検証する"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password)
+
 
 def create_access_token(data: dict) -> str:
     """指定されたデータを含むJWTを生成する"""
@@ -55,6 +67,7 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def decode_access_token(token: str) -> dict | None:
     """JWTをデコードしてペイロード（中身）を返す。無効な場合はNoneを返す"""
     try:
@@ -63,16 +76,19 @@ def decode_access_token(token: str) -> dict | None:
     except jwt.PyJWTError:
         return None
 
-# --- ユーザー管理API --- 
 
-def register_user(username: str, password: str, role: str = 'user') -> bool:
+# --- ユーザー管理API ---
+
+
+def register_user(username: str, password: str, role: str = "user") -> bool:
     """ユーザーを登録する。成功したらTrue、ユーザーが既に存在する場合はFalseを返す"""
     if username in _users_db:
         return False
-    
+
     hashed_pw = hash_password(password)
     _users_db[username] = {"hashed_password": hashed_pw, "role": role}
     return True
+
 
 def authenticate_user(username: str, password: str) -> dict | None:
     """
@@ -82,11 +98,12 @@ def authenticate_user(username: str, password: str) -> dict | None:
     user = _users_db.get(username)
     if not user:
         return None
-    
+
     if not verify_password(password, user["hashed_password"]):
         return None
-        
+
     return {"username": username, "role": user["role"]}
+
 
 def change_password(username: str, old_password: str, new_password: str) -> bool:
     """
@@ -96,16 +113,16 @@ def change_password(username: str, old_password: str, new_password: str) -> bool
     user = _users_db.get(username)
     if not user:
         return False
-    
+
     if not verify_password(old_password, user["hashed_password"]):
         return False
-    
+
     hashed_pw = hash_password(new_password)
     _users_db[username]["hashed_password"] = hashed_pw
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # --- モジュールの動作テスト ---
     print("--- 認証・認可エンジンのテスト実行 ---")
 
@@ -131,7 +148,10 @@ if __name__ == '__main__':
 
     # 3. JWTの発行と検証
     print("\n3. JWT発行・検証テスト")
-    user_data = {"sub": authenticated_user["username"], "role": authenticated_user["role"]}
+    user_data = {
+        "sub": authenticated_user["username"],
+        "role": authenticated_user["role"],
+    }
     token = create_access_token(user_data)
     print(f"発行されたトークン (一部): {token[:30]}...")
     assert isinstance(token, str)

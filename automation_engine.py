@@ -3,7 +3,9 @@ from pathlib import Path
 from datetime import datetime
 
 # プロジェクトのモジュールをインポート
-from database import DATABASE_FILE
+import database
+
+DATABASE_FILE = database.DATABASE_FILE
 
 BACKUP_DIR = Path("backups")
 
@@ -18,7 +20,7 @@ def backup_database() -> str:
     BACKUP_DIR.mkdir(exist_ok=True) # バックアップディレクトリが存在しない場合は作成
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = BACKUP_DIR / f"database_{timestamp}.json.encrypted"
+    backup_file = BACKUP_DIR / f"database_{timestamp}.adb.bak"
 
     try:
         shutil.copy(DATABASE_FILE, backup_file)
@@ -66,7 +68,7 @@ if __name__ == '__main__':
     latest_backup = None
     latest_timestamp = datetime.min
     for f in BACKUP_DIR.iterdir():
-        if f.is_file() and f.name.startswith("database_") and f.name.endswith(".json.encrypted"):
+        if f.is_file() and f.name.startswith("database_") and f.name.endswith(".adb.bak"):
             try:
                 # ファイル名からタイムスタンプを抽出
                 ts_str = f.name.split("_")[1].split(".")[0]
