@@ -59,79 +59,93 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
     if command == "INSERT_ONE":
         collection = data.get("collection")
         document = data.get("document")
-        if collection and document:
-            # 権限チェック: ドキュメントにowner_idが指定されている場合、認証されたユーザーと一致するか確認
-            if "owner_id" in document and document["owner_id"] != owner_id:
-                return {"status": "error", "message": "他のユーザーのowner_idを持つドキュメントは挿入できません。"}
-            
-            # ドキュメントにowner_idが指定されていない場合、認証されたユーザーのowner_idを設定
-            if "owner_id" not in document:
-                document["owner_id"] = owner_id
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(document, dict) or not document:
+            return {"status": "error", "message": "documentは必須の辞書です。"}
 
-            inserted_doc = db_instance.insert_one(collection, document, owner_id=owner_id)
-            response = {"status": "ok", "data": inserted_doc}
-        else:
-            response = {"status": "error", "message": "collectionとdocumentが必要です。"}
+        # 権限チェック: ドキュメントにowner_idが指定されている場合、認証されたユーザーと一致するか確認
+        if "owner_id" in document and document["owner_id"] != owner_id:
+            return {"status": "error", "message": "他のユーザーのowner_idを持つドキュメントは挿入できません。"}
+        
+        # ドキュメントにowner_idが指定されていない場合、認証されたユーザーのowner_idを設定
+        if "owner_id" not in document:
+            document["owner_id"] = owner_id
+
+        inserted_doc = db_instance.insert_one(collection, document, owner_id=owner_id)
+        response = {"status": "ok", "data": inserted_doc}
         return response
 
     if command == "FIND":
         collection = data.get("collection")
         query = data.get("query", {})
-        if collection:
-            found_docs = db_instance.find(collection, query, owner_id=owner_id)
-            response = {"status": "ok", "data": found_docs}
-        else:
-            response = {"status": "error", "message": "collectionが必要です。"}
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+
+        found_docs = db_instance.find(collection, query, owner_id=owner_id)
+        response = {"status": "ok", "data": found_docs}
         return response
 
     if command == "UPDATE_ONE":
         collection = data.get("collection")
         query = data.get("query", {})
         update_data = data.get("update_data", {})
-        if collection and query and update_data:
-            updated_doc = db_instance.update_one(collection, query, update_data, owner_id=owner_id)
-            if updated_doc:
-                response = {"status": "ok", "data": updated_doc}
-            else:
-                response = {"status": "error", "message": "更新対象のドキュメントが見つからないか、権限がありません。"}
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+        if not isinstance(update_data, dict) or not update_data:
+            return {"status": "error", "message": "update_dataは必須の辞書です。"}
+
+        updated_doc = db_instance.update_one(collection, query, update_data, owner_id=owner_id)
+        if updated_doc:
+            response = {"status": "ok", "data": updated_doc}
         else:
-            response = {"status": "error", "message": "collection, query, update_dataが必要です。"}
+            response = {"status": "error", "message": "更新対象のドキュメントが見つからないか、権限がありません。"}
         return response
 
     if command == "DELETE_ONE":
         collection = data.get("collection")
         query = data.get("query", {})
-        if collection and query:
-            deleted_doc = db_instance.delete_one(collection, query, owner_id=owner_id)
-            if deleted_doc:
-                response = {"status": "ok", "data": deleted_doc}
-            else:
-                response = {"status": "error", "message": "削除対象のドキュメントが見つからないか、権限がありません。"}
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+
+        deleted_doc = db_instance.delete_one(collection, query, owner_id=owner_id)
+        if deleted_doc:
+            response = {"status": "ok", "data": deleted_doc}
         else:
-            response = {"status": "error", "message": "collectionとqueryが必要です。"}
+            response = {"status": "error", "message": "削除対象のドキュメントが見つからないか、権限がありません。"}
         return response
 
     if command == "FIND_ONE":
         collection = data.get("collection")
         query = data.get("query", {})
-        if collection and query:
-            found_doc = db_instance.find_one(collection, query, owner_id=owner_id)
-            if found_doc:
-                response = {"status": "ok", "data": found_doc}
-            else:
-                response = {"status": "error", "message": "ドキュメントが見つからないか、権限がありません。"}
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+
+        found_doc = db_instance.find_one(collection, query, owner_id=owner_id)
+        if found_doc:
+            response = {"status": "ok", "data": found_doc}
         else:
-            response = {"status": "error", "message": "collectionとqueryが必要です。"}
+            response = {"status": "error", "message": "ドキュメントが見つからないか、権限がありません。"}
         return response
 
     if command == "FIND_MANY":
         collection = data.get("collection")
         query = data.get("query", {})
-        if collection:
-            found_docs = db_instance.find_many(collection, query, owner_id=owner_id)
-            response = {"status": "ok", "data": found_docs}
-        else:
-            response = {"status": "error", "message": "collectionが必要です。"}
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+
+        found_docs = db_instance.find_many(collection, query, owner_id=owner_id)
+        response = {"status": "ok", "data": found_docs}
         return response
 
     if command == "BACKUP":
