@@ -84,7 +84,21 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "collectionが必要です。"}
         return response
 
-    # 他のコマンド (UPDATE, DELETEなど) はここに追加していく
+    if command == "UPDATE_ONE":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        update_data = data.get("update_data", {})
+        if collection and query and update_data:
+            updated_doc = db_instance.update_one(collection, query, update_data, owner_id=owner_id)
+            if updated_doc:
+                response = {"status": "ok", "data": updated_doc}
+            else:
+                response = {"status": "error", "message": "更新対象のドキュメントが見つからないか、権限がありません。"}
+        else:
+            response = {"status": "error", "message": "collection, query, update_dataが必要です。"}
+        return response
+
+    # 他のコマンド (DELETEなど) はここに追加していく
 
     return response
 

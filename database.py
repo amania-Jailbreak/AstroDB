@@ -131,6 +131,29 @@ class AstroDB:
                         results.append(doc)
             return results
 
+    def update_one(self, collection_name: str, query: dict, update_data: dict, owner_id: str) -> dict | None:
+        """
+        指定されたコレクションからクエリに一致するドキュメントを1つ更新する。
+        owner_idに紐づくドキュメントのみを更新対象とする。
+        _idとowner_idは更新できない。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return None
+            
+            for i, doc in enumerate(self._db["collections"][collection_name]):
+                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
+                    # _idとowner_idは更新不可
+                    if "_id" in update_data: del update_data["_id"]
+                    if "owner_id" in update_data: del update_data["owner_id"]
+
+                    doc.update(update_data)
+                    self._db["collections"][collection_name][i] = doc
+                    # インデックスの更新（必要であれば）
+                    self._rebuild_indexes() # 簡単のため、更新時はインデックスを再構築
+                    return doc
+            return None
+
     # --- インデックス管理API (スタブ) ---
 
     def create_index(self, collection_name: str, field: str):

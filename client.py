@@ -66,6 +66,7 @@ class AstroDBClient:
         print("login             - サーバーにログインします")
         print("insert <coll> <json> - ドキュメントを挿入します (例: insert posts {\"title\":\"hello\"})")
         print("find <coll> <json>   - ドキュメントを検索します (例: find posts {\"title\":\"hello\"})")
+        print("update <coll> <query> <json> - ドキュメントを更新します (例: update posts {\"title\":\"hello\"} {\"status\":\"published\"})")
         print("help              - このヘルプメッセージを表示します")
         print("exit              - クライアントを終了します")
         print("---------------------------\n")
