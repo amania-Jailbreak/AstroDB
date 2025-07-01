@@ -186,6 +186,24 @@ class AstroDB:
                     return doc
             return None
 
+    def find_many(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
+        """
+        指定されたコレクションからクエリに一致するドキュメントを複数検索する。
+        owner_idに紐づくドキュメントのみを返す。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return []
+            
+            results = []
+            for doc in self._db["collections"][collection_name]:
+                # owner_idによるフィルタリング
+                if doc.get("owner_id") == owner_id:
+                    # クエリによるフィルタリング
+                    if query_engine.query_engine_instance.matches(doc, query):
+                        results.append(doc)
+            return results
+
     # --- インデックス管理API (スタブ) ---
 
     def create_index(self, collection_name: str, field: str):

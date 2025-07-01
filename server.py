@@ -124,6 +124,16 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "collectionとqueryが必要です。"}
         return response
 
+    if command == "FIND_MANY":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        if collection:
+            found_docs = db_instance.find_many(collection, query, owner_id=owner_id)
+            response = {"status": "ok", "data": found_docs}
+        else:
+            response = {"status": "error", "message": "collectionが必要です。"}
+        return response
+
     return response
 
 @app.websocket("/ws")
