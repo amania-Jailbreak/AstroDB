@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+websockets
+cryptography
+bcrypt
+PyJWT
+python-dotenv
+ujson

@@ -1,0 +1,17 @@
+
+# Virtual Environment
+env/
+venv/
+*.venv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Sensitive information
+.env
+
+# Database file
+database.json.encrypted
