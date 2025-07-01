@@ -60,7 +60,14 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
         collection = data.get("collection")
         document = data.get("document")
         if collection and document:
-            # TODO: 権限チェック (例: このコレクションに書き込み可能か)
+            # 権限チェック: ドキュメントにowner_idが指定されている場合、認証されたユーザーと一致するか確認
+            if "owner_id" in document and document["owner_id"] != owner_id:
+                return {"status": "error", "message": "他のユーザーのowner_idを持つドキュメントは挿入できません。"}
+            
+            # ドキュメントにowner_idが指定されていない場合、認証されたユーザーのowner_idを設定
+            if "owner_id" not in document:
+                document["owner_id"] = owner_id
+
             inserted_doc = db_instance.insert_one(collection, document, owner_id=owner_id)
             response = {"status": "ok", "data": inserted_doc}
         else:
