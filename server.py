@@ -59,6 +59,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
 
     try:
         # --- 認証が不要なコマンド ---
+        logger.info(f"受信したコマンド: {command}")
         if command == "REGISTER":
             success = auth_engine.register_user(
                 data.get("username"), data.get("password")
