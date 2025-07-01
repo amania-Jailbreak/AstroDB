@@ -225,37 +225,20 @@ class AstroDB:
         """
         指定されたコレクションからクエリに一致するドキュメントを1つ検索する。
         owner_idに紐づくドキュメントのみを返す。
+        可能であればインデックスを利用する。
         """
-        with self._lock:
-            if collection_name not in self._db["collections"]:
-                return None
-
-            for doc in self._db["collections"][collection_name]:
-                if doc.get(
-                    "owner_id"
-                ) == owner_id and query_engine.query_engine_instance.matches(
-                    doc, query
-                ):
-                    return doc
-            return None
+        # find_manyを呼び出し、最初の結果を返す
+        results = self.find_many(collection_name, query, owner_id)
+        return results[0] if results else None
 
     def find_many(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
         """
         指定されたコレクションからクエリに一致するドキュメントを複数検索する。
         owner_idに紐づくドキュメントのみを返す。
+        可能であればインデックスを利用する。
         """
-        with self._lock:
-            if collection_name not in self._db["collections"]:
-                return []
-
-            results = []
-            for doc in self._db["collections"][collection_name]:
-                # owner_idによるフィルタリング
-                if doc.get("owner_id") == owner_id:
-                    # クエリによるフィルタリング
-                    if query_engine.query_engine_instance.matches(doc, query):
-                        results.append(doc)
-            return results
+        # findメソッドと実質的に同じなので、findを呼び出す
+        return self.find(collection_name, query, owner_id)
 
     # --- インデックス管理API (スタブ) ---
 
@@ -281,15 +264,46 @@ class AstroDB:
                     if field in doc:
                         self._indexes[collection_name][field][doc[field]] = doc
 
+    def _find_with_index(self, collection_name: str, query: dict) -> list[dict] | None:
+        """クエリに最適なインデックスを探して検索を行う。見つからなければNoneを返す"""
+        if collection_name not in self._indexes:
+            return None
+
+        # 最も選択率の高い（ユニークな値が多い）インデックスを探すロジック（今回は単純化）
+        for field, value in query.items():
+            if isinstance(value, dict): # $gt, $ltなどの演算子はインデックス検索の対象外（今回は単純化）
+                continue
+            if field in self._indexes[collection_name]:
+                index_map = self._indexes[collection_name][field]
+                if value in index_map:
+                    # インデックスがヒットした場合、そのドキュメントをリストで返す
+                    return [index_map[value]]
+                else:
+                    # インデックスはあるが、値が見つからない場合は空リストを返す
+                    return []
+        return None # 適切なインデックスが見つからなかった
+
     def find(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
         """
         指定されたコレクションからクエリに一致するドキュメントを検索する。
         owner_idに紐づくドキュメントのみを返す。
+        可能であればインデックスを利用する。
         """
         with self._lock:
             if collection_name not in self._db["collections"]:
                 return []
 
+            # 1. インデックスを利用した検索を試みる
+            indexed_results = self._find_with_index(collection_name, query)
+            if indexed_results is not None:
+                # インデックスで見つかった結果から、さらにowner_idとクエリでフィルタリング
+                final_results = []
+                for doc in indexed_results:
+                    if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
+                        final_results.append(doc)
+                return final_results
+
+            # 2. インデックスが利用できない場合はフルスキャン
             results = []
             for doc in self._db["collections"][collection_name]:
                 # owner_idによるフィルタリング
