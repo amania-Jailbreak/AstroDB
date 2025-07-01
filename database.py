@@ -113,6 +113,24 @@ class AstroDB:
                 if field in document:
                     index_map[document[field]] = document # ドキュメント全体を保存
 
+    def find(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
+        """
+        指定されたコレクションからクエリに一致するドキュメントを検索する。
+        owner_idに紐づくドキュメントのみを返す。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return []
+            
+            results = []
+            for doc in self._db["collections"][collection_name]:
+                # owner_idによるフィルタリング
+                if doc.get("owner_id") == owner_id:
+                    # クエリによるフィルタリング
+                    if query_engine.query_engine_instance.matches(doc, query):
+                        results.append(doc)
+            return results
+
     # --- インデックス管理API (スタブ) ---
 
     def create_index(self, collection_name: str, field: str):
@@ -134,6 +152,24 @@ class AstroDB:
                 for doc in self._db["collections"][collection_name]:
                     if field in doc:
                         self._indexes[collection_name][field][doc[field]] = doc
+
+    def find(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
+        """
+        指定されたコレクションからクエリに一致するドキュメントを検索する。
+        owner_idに紐づくドキュメントのみを返す。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return []
+            
+            results = []
+            for doc in self._db["collections"][collection_name]:
+                # owner_idによるフィルタリング
+                if doc.get("owner_id") == owner_id:
+                    # クエリによるフィルタリング
+                    if query_engine.query_engine_instance.matches(doc, query):
+                        results.append(doc)
+            return results
 
 # --- シングルトンインスタンス ---
 # アプリケーション全体で単一のデータベースインスタンスを共有する
