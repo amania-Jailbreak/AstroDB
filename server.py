@@ -156,6 +156,20 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "権限がありません。"}
         return response
 
+    if command == "CHANGE_PASSWORD":
+        username = user_payload.get("sub") # 認証済みのユーザー名
+        old_password = data.get("old_password")
+        new_password = data.get("new_password")
+        if username and old_password and new_password:
+            success = auth_engine.change_password(username, old_password, new_password)
+            if success:
+                response = {"status": "ok", "message": "パスワードが正常に変更されました。"}
+            else:
+                response = {"status": "error", "message": "現在のパスワードが正しくありません。"}
+        else:
+            response = {"status": "error", "message": "old_passwordとnew_passwordが必要です。"}
+        return response
+
     return response
 
 @app.websocket("/ws")

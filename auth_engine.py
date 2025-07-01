@@ -88,6 +88,22 @@ def authenticate_user(username: str, password: str) -> dict | None:
         
     return {"username": username, "role": user["role"]}
 
+def change_password(username: str, old_password: str, new_password: str) -> bool:
+    """
+    ユーザーのパスワードを変更する。
+    古いパスワードが正しく、ユーザーが存在すればTrueを返す。
+    """
+    user = _users_db.get(username)
+    if not user:
+        return False
+    
+    if not verify_password(old_password, user["hashed_password"]):
+        return False
+    
+    hashed_pw = hash_password(new_password)
+    _users_db[username]["hashed_password"] = hashed_pw
+    return True
+
 
 if __name__ == '__main__':
     # --- モジュールの動作テスト ---

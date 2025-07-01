@@ -59,8 +59,10 @@ class AstroDBClient:
                     await self.handle_update(parts)
                 elif cmd == "delete":
                     await self.handle_delete(parts)
-                elif cmd == "find_one":
-                    await self.handle_find_one(parts)
+                elif cmd == "restore":
+                    await self.handle_restore(parts)
+                elif cmd == "change_password":
+                    await self.handle_change_password()
                 else:
                     print(f"不明なコマンドです: {cmd}")
 
