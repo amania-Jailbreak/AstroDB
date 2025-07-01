@@ -16,8 +16,8 @@ SERVER_URL = "ws://127.0.0.1:8000/ws"
 # テスト用コレクション名
 TEST_COLLECTION = "persistence_test_collection"
 # テスト用ユーザー名とパスワード
-TEST_USERNAME = "persistence_user"
-TEST_PASSWORD = "persistence_password"
+TEST_USERNAME = "persistence_user_test"
+TEST_PASSWORD = "persistence_password_test"
 
 def generate_random_string(length=10):
     """指定された長さのランダムな文字列を生成する"""
