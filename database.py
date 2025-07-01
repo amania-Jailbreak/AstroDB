@@ -1,7 +1,12 @@
 import ujson
 from threading import Lock
 from pathlib import Path
-import uuid  # 追加
+import uuid
+import logging
+
+# ロガーの設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # プロジェクトのモジュールをインポート
 import encryption
@@ -27,7 +32,7 @@ class AstroDB:
         """暗号化されたデータベースファイルをディスクから読み込む"""
         with self._lock:
             if not DATABASE_FILE.exists():
-                print(
+                logger.info(
                     "データベースファイルが存在しないため、新しいデータベースを作成します。"
                 )
                 self._db = {
@@ -41,7 +46,7 @@ class AstroDB:
                     encrypted_data = f.read()
 
                 if not encrypted_data:
-                    print(
+                    logger.warning(
                         "データベースファイルが空です。新しいデータベースを作成します。"
                     )
                     self._db = {
@@ -55,10 +60,10 @@ class AstroDB:
                 # 互換性のため、古いDB形式の場合に_index_definitionsを追加
                 if "_index_definitions" not in self._db:
                     self._db["_index_definitions"] = {}
-                print("データベースをディスクから正常に読み込みました。")
+                logger.info("データベースをディスクから正常に読み込みました。")
                 self._rebuild_indexes()
             except Exception as e:
-                print(f"致命的エラー: データベースの読み込みに失敗しました。 {e}")
+                logger.critical(f"致命的エラー: データベースの読み込みに失敗しました。 {e}")
                 # ファイルが破損している可能性などを考慮し、空のDBで起動
                 self._db = {"collections": {}, "_index_definitions": {}}
 
@@ -70,9 +75,9 @@ class AstroDB:
                 encrypted_data = encryption.encrypt(db_json)
                 with open(DATABASE_FILE, "wb") as f:
                     f.write(encrypted_data)
-                print("データベースをディスクに正常に保存しました。")
+                logger.info("データベースをディスクに正常に保存しました。")
             except Exception as e:
-                print(f"エラー: データベースの保存に失敗しました。 {e}")
+                logger.error(f"エラー: データベースの保存に失敗しました。 {e}")
 
     def _rebuild_indexes(self):
         """データベースのロード時にインデックスを再構築する内部メソッド"""
@@ -121,6 +126,26 @@ class AstroDB:
             self.save_to_disk() # 変更をディスクに保存
             
             return document
+
+    def insert_many(self, collection_name: str, documents: list[dict], owner_id: str) -> list[dict]:
+        """
+        コレクションに複数のドキュメントを挿入する。
+        各ドキュメントには自動的にowner_idが付与される。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                self._db["collections"][collection_name] = []
+
+            inserted_docs = []
+            for document in documents:
+                doc_id = str(uuid.uuid4())
+                document["_id"] = doc_id
+                document["owner_id"] = owner_id
+                self._db["collections"][collection_name].append(document)
+                self._update_indexes_on_insert(collection_name, document)
+                inserted_docs.append(document)
+            self.save_to_disk()
+            return inserted_docs
 
     def _update_indexes_on_insert(self, collection_name: str, document: dict):
         """新しいドキュメントが挿入されたときにインデックスを更新する内部メソッド"""
@@ -194,6 +219,34 @@ class AstroDB:
                     return doc
             return None
 
+    def update_many(self, collection_name: str, query: dict, update_data: dict, owner_id: str) -> int:
+        """
+        指定されたコレクションからクエリに一致する複数のドキュメントを更新する。
+        owner_idに紐づくドキュメントのみを更新対象とする。
+        _idとowner_idは更新できない。
+        更新されたドキュメントの数を返す。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return 0
+            
+            updated_count = 0
+            for i, doc in enumerate(self._db["collections"][collection_name]):
+                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
+                    old_doc = doc.copy()
+
+                    if "_id" in update_data: del update_data["_id"]
+                    if "owner_id" in update_data: del update_data["owner_id"]
+                    
+                    doc.update(update_data)
+                    self._db["collections"][collection_name][i] = doc
+                    
+                    self._update_indexes_on_update(collection_name, old_doc, doc)
+                    updated_count += 1
+            if updated_count > 0:
+                self.save_to_disk()
+            return updated_count
+
     def delete_one(
         self, collection_name: str, query: dict, owner_id: str
     ) -> dict | None:
@@ -221,6 +274,28 @@ class AstroDB:
                     return deleted_doc
             return None
 
+    def delete_many(self, collection_name: str, query: dict, owner_id: str) -> int:
+        """
+        指定されたコレクションからクエリに一致する複数のドキュメントを削除する。
+        owner_idに紐づくドキュメントのみを削除対象とする。
+        削除されたドキュメントの数を返す。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return 0
+
+            deleted_count = 0
+            # 逆順にイテレートして削除してもインデックスがずれないようにする
+            for i in range(len(self._db["collections"][collection_name]) - 1, -1, -1):
+                doc = self._db["collections"][collection_name][i]
+                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
+                    deleted_doc = self._db["collections"][collection_name].pop(i)
+                    self._update_indexes_on_delete(collection_name, deleted_doc)
+                    deleted_count += 1
+            if deleted_count > 0:
+                self.save_to_disk()
+            return deleted_count
+
     def find_one(self, collection_name: str, query: dict, owner_id: str) -> dict | None:
         """
         指定されたコレクションからクエリに一致するドキュメントを1つ検索する。
@@ -245,7 +320,7 @@ class AstroDB:
     def create_index(self, collection_name: str, field: str):
         """指定されたフィールドのインデックスを作成する（将来の実装）"""
         with self._lock:
-            print(
+            logger.info(
                 f"INFO: {collection_name}コレクションの{field}フィールドにインデックスを作成します。"
             )
             if collection_name not in self._indexes:
@@ -320,45 +395,45 @@ db_instance = AstroDB()
 
 if __name__ == "__main__":
     # --- モジュールの動作テスト ---
-    print("\n--- データベースコアのテスト実行 ---")
+    logger.info("\n--- データベースコアのテスト実行 ---")
 
     # テスト用に既存のデータベースファイルを削除
     if DATABASE_FILE.exists():
         DATABASE_FILE.unlink()
 
     # 1. データベースインスタンスの初期化テスト
-    print("1. データベースの初期化")
+    logger.info("1. データベースの初期化")
     test_db = AstroDB()
-    print("データベースインスタンスは正常に作成されました。")
+    logger.info("データベースインスタンスは正常に作成されました。")
 
     # 2. ドキュメントの挿入テスト
-    print("\n2. ドキュメント挿入テスト")
+    logger.info("\n2. ドキュメント挿入テスト")
     test_doc = {"name": "AstroDB", "type": "database"}
     # 本来このowner_idは認証エンジンから渡される
     inserted_doc = test_db.insert_one("projects", test_doc, owner_id="user_123")
     assert "owner_id" in inserted_doc
     assert inserted_doc["owner_id"] == "user_123"
     assert "_id" in inserted_doc  # _idが追加されたことを確認
-    print(
+    logger.info(
         f"ドキュメントが正常に挿入され、owner_idと_idが付与されました: {inserted_doc}"
     )
 
     # 3. インデックス作成テスト
-    print("\n3. インデックス作成テスト")
+    logger.info("\n3. インデックス作成テスト")
     test_db.create_index("projects", "name")
     assert "projects" in test_db._indexes
     assert "name" in test_db._indexes["projects"]
     assert test_db._indexes["projects"]["name"]["AstroDB"]["_id"] == inserted_doc["_id"]
-    print("インデックスが正常に作成され、既存データがインデックスされました。")
+    logger.info("インデックスが正常に作成され、既存データがインデックスされました。")
 
     # 4. データの永続化テスト
-    print("\n4. データベースの永続化テスト")
+    logger.info("\n4. データベースの永続化テスト")
     test_db.save_to_disk()
     assert DATABASE_FILE.exists()
-    print(f"{DATABASE_FILE} が正常に作成/更新されました。")
+    logger.info(f"{DATABASE_FILE} が正常に作成/更新されました。")
 
     # 5. データベースの読み込みとインデックス再構築テスト
-    print("\n5. データベースの読み込みとインデックス再構築テスト")
+    logger.info("\n5. データベースの読み込みとインデックス再構築テスト")
     new_db_instance = AstroDB()
     assert "projects" in new_db_instance._db["collections"]
     retrieved_doc = new_db_instance._db["collections"]["projects"][0]
@@ -371,12 +446,12 @@ if __name__ == "__main__":
         new_db_instance._indexes["projects"]["name"]["AstroDB"]["_id"]
         == retrieved_doc["_id"]
     )
-    print(
+    logger.info(
         f"ファイルからデータベースを正常に再読み込みし、インデックスも再構築されました。"
     )
 
     # 6. 新しいドキュメント挿入時のインデックス更新テスト
-    print("\n6. 新しいドキュメント挿入時のインデックス更新テスト")
+    logger.info("\n6. 新しいドキュメント挿入時のインデックス更新テスト")
     test_doc2 = {"name": "NewProject", "type": "app"}
     inserted_doc2 = new_db_instance.insert_one(
         "projects", test_doc2, owner_id="user_456"
@@ -386,9 +461,9 @@ if __name__ == "__main__":
         new_db_instance._indexes["projects"]["name"]["NewProject"]["_id"]
         == inserted_doc2["_id"]
     )
-    print("新しいドキュメント挿入時にインデックスが正常に更新されました。")
+    logger.info("新しいドキュメント挿入時にインデックスが正常に更新されました。")
 
-    print("\nテスト成功！データベースコアが正常に機能しています。")
+    logger.info("\nテスト成功！データベースコアが正常に機能しています。")
     # テスト用に作成されたファイルをクリーンアップ
     DATABASE_FILE.unlink()
-    print(f"テストファイル {DATABASE_FILE} を削除しました。")
+    logger.info(f"テストファイル {DATABASE_FILE} を削除しました。")

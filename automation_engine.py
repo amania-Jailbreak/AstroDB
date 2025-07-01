@@ -1,6 +1,11 @@
 import shutil
 from pathlib import Path
 from datetime import datetime
+import logging
+
+# ロガーの設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # プロジェクトのモジュールをインポート
 import database
@@ -49,21 +54,21 @@ def restore_database(backup_filename: str) -> str:
 
 if __name__ == '__main__':
     # --- モジュールの動作テスト ---
-    print("\n--- 自動化エンジンのテスト実行 ---")
+    logger.info("\n--- 自動化エンジンのテスト実行 ---")
 
     # テスト用にダミーのデータベースファイルを作成
     dummy_db_content = b"dummy_encrypted_data"
     DATABASE_FILE.write_bytes(dummy_db_content)
-    print(f"ダミーデータベースファイル {DATABASE_FILE} を作成しました。")
+    logger.info(f"ダミーデータベースファイル {DATABASE_FILE} を作成しました。")
 
     # 1. バックアップテスト
-    print("\n1. バックアップテスト")
+    logger.info("\n1. バックアップテスト")
     backup_result = backup_database()
-    print(backup_result)
+    logger.info(backup_result)
     assert "バックアップしました" in backup_result
 
     # 2. 復元テスト (最新のバックアップファイルを取得)
-    print("\n2. 復元テスト")
+    logger.info("\n2. 復元テスト")
     # 最新のバックアップファイルを見つける
     latest_backup = None
     latest_timestamp = datetime.min
@@ -81,14 +86,14 @@ if __name__ == '__main__':
 
     if latest_backup:
         restore_result = restore_database(latest_backup)
-        print(restore_result)
+        logger.info(restore_result)
         assert "復元しました" in restore_result
     else:
-        print("バックアップファイルが見つからなかったため、復元テストをスキップします。")
+        logger.info("バックアップファイルが見つからなかったため、復元テストをスキップします。")
 
     # クリーンアップ
     if DATABASE_FILE.exists():
         DATABASE_FILE.unlink()
     if BACKUP_DIR.exists():
         shutil.rmtree(BACKUP_DIR)
-    print("\nテスト完了。作成されたファイルとディレクトリをクリーンアップしました。")
+    logger.info("\nテスト完了。作成されたファイルとディレクトリをクリーンアップしました。")

@@ -2,23 +2,29 @@
 import ujson
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Any
+import logging
 
 from contextlib import asynccontextmanager
 
+# ロガーの設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # プロジェクトのモジュールをインポート
 import auth_engine
+import automation_engine # automation_engineをインポート
 from database import db_instance # データベースのシングルトンインスタンス
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # アプリケーション起動時の処理
     # （今回は特にないが、将来的にDB接続プールなどを作成する場合はここに書く）
-    print("サーバーが起動しました。")
+    logger.info("サーバーが起動しました。")
     yield
     # アプリケーション終了時の処理
-    print("シャットダウン処理を開始します...")
+    logger.info("シャットダウン処理を開始します...")
     db_instance.save_to_disk()
-    print("シャットダウン処理が完了しました。")
+    logger.info("シャットダウン処理が完了しました。")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -76,6 +82,25 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
         response = {"status": "ok", "data": inserted_doc}
         return response
 
+    if command == "INSERT_MANY":
+        collection = data.get("collection")
+        documents = data.get("documents")
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(documents, list) or not documents:
+            return {"status": "error", "message": "documentsは必須のリストです。"}
+        
+        # 各ドキュメントにowner_idを設定
+        for doc in documents:
+            if "owner_id" in doc and doc["owner_id"] != owner_id:
+                return {"status": "error", "message": "他のユーザーのowner_idを持つドキュメントは挿入できません。"}
+            if "owner_id" not in doc:
+                doc["owner_id"] = owner_id
+
+        inserted_docs = db_instance.insert_many(collection, documents, owner_id=owner_id)
+        response = {"status": "ok", "data": inserted_docs}
+        return response
+
     if command == "FIND":
         collection = data.get("collection")
         query = data.get("query", {})
@@ -106,6 +131,21 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "更新対象のドキュメントが見つからないか、権限がありません。"}
         return response
 
+    if command == "UPDATE_MANY":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        update_data = data.get("update_data", {})
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+        if not isinstance(update_data, dict) or not update_data:
+            return {"status": "error", "message": "update_dataは必須の辞書です。"}
+
+        updated_count = db_instance.update_many(collection, query, update_data, owner_id=owner_id)
+        response = {"status": "ok", "updated_count": updated_count}
+        return response
+
     if command == "DELETE_ONE":
         collection = data.get("collection")
         query = data.get("query", {})
@@ -119,6 +159,18 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "ok", "data": deleted_doc}
         else:
             response = {"status": "error", "message": "削除対象のドキュメントが見つからないか、権限がありません。"}
+        return response
+
+    if command == "DELETE_MANY":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        if not isinstance(collection, str) or not collection:
+            return {"status": "error", "message": "collectionは必須の文字列です。"}
+        if not isinstance(query, dict):
+            return {"status": "error", "message": "queryは辞書である必要があります。"}
+
+        deleted_count = db_instance.delete_many(collection, query, owner_id=owner_id)
+        response = {"status": "ok", "deleted_count": deleted_count}
         return response
 
     if command == "FIND_ONE":
@@ -189,7 +241,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("クライアントが接続しました。")
+    logger.info("クライアントが接続しました。")
     try:
         while True:
             raw_data = await websocket.receive_text()
@@ -198,13 +250,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 response = await handle_command(websocket, data)
             except (ValueError, TypeError):
                 response = {"status": "error", "message": "無効なJSON形式です。"}
+                logger.error(f"無効なJSON形式を受信しました: {raw_data}")
             
             await websocket.send_text(ujson.dumps(response))
 
     except WebSocketDisconnect:
-        print("クライアントが切断しました。")
+        logger.info("クライアントが切断しました。")
     except Exception as e:
-        print(f"予期せぬエラーが発生しました: {e}")
+        logger.exception(f"予期せぬエラーが発生しました: {e}")
         # クライアントにエラーを通知しようと試みる (接続がまだ生きていれば)
         try:
             await websocket.send_text(ujson.dumps({"status": "error", "message": "サーバー内部でエラーが発生しました。"}))
@@ -215,8 +268,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    print("--- AstroDBサーバーを起動します ---")
-    print("URL: http://127.0.0.1:8000")
-    print("WebSocketエンドポイント: ws://127.0.0.1:8000/ws")
-    print("Ctrl+Cでサーバーを停止します。")
+    logger.info("--- AstroDBサーバーを起動します ---")
+    logger.info("URL: http://127.0.0.1:8000")
+    logger.info("WebSocketエンドポイント: ws://127.0.0.1:8000/ws")
+    logger.info("Ctrl+Cでサーバーを停止します。")
     uvicorn.run(app, host="127.0.0.1", port=8000)
