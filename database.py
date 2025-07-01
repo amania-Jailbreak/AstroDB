@@ -102,7 +102,7 @@ class AstroDB:
 
             self._db["collections"][collection_name].append(document)
             
-            self._update_indexes_on_insert(collection_name, document) # 追加
+            self._update_indexes_on_insert(collection_name, document)
             
             return document
 
@@ -112,6 +112,33 @@ class AstroDB:
             for field, index_map in self._indexes[collection_name].items():
                 if field in document:
                     index_map[document[field]] = document # ドキュメント全体を保存
+
+    def _update_indexes_on_update(self, collection_name: str, old_document: dict, new_document: dict):
+        """
+        ドキュメントが更新されたときにインデックスを更新する内部メソッド。
+        変更されたフィールドのみを更新する。
+        """
+        if collection_name in self._indexes:
+            for field, index_map in self._indexes[collection_name].items():
+                old_value = old_document.get(field)
+                new_value = new_document.get(field)
+
+                if old_value != new_value:
+                    # 古いエントリを削除
+                    if old_value in index_map and index_map[old_value]["_id"] == old_document["_id"]:
+                        del index_map[old_value]
+                    # 新しいエントリを追加
+                    if new_value is not None:
+                        index_map[new_value] = new_document
+
+    def _update_indexes_on_delete(self, collection_name: str, document: dict):
+        """
+        ドキュメントが削除されたときにインデックスを更新する内部メソッド。
+        """
+        if collection_name in self._indexes:
+            for field, index_map in self._indexes[collection_name].items():
+                if field in document and document[field] in index_map and index_map[document[field]]["_id"] == document["_id"]:
+                    del index_map[document[field]]
 
     def find(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
         """
@@ -168,7 +195,7 @@ class AstroDB:
                 doc = self._db["collections"][collection_name][i]
                 if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
                     deleted_doc = self._db["collections"][collection_name].pop(i)
-                    self._rebuild_indexes() # 簡単のため、削除時はインデックスを再構築
+                    self._update_indexes_on_delete(collection_name, deleted_doc) # インデックス更新
                     return deleted_doc
             return None
 
