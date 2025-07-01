@@ -3,11 +3,24 @@ import ujson
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Any
 
+from contextlib import asynccontextmanager
+
 # プロジェクトのモジュールをインポート
 import auth_engine
 from database import db_instance # データベースのシングルトンインスタンス
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # アプリケーション起動時の処理
+    # （今回は特にないが、将来的にDB接続プールなどを作成する場合はここに書く）
+    print("サーバーが起動しました。")
+    yield
+    # アプリケーション終了時の処理
+    print("シャットダウン処理を開始します...")
+    db_instance.save_to_disk()
+    print("シャットダウン処理が完了しました。")
+
+app = FastAPI(lifespan=lifespan)
 
 async def handle_command(websocket: WebSocket, data: dict) -> dict:
     """受信したコマンドを解析し、適切なエンジンに処理を振り分ける"""
@@ -83,12 +96,7 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception:
             pass # 接続が既に切れている場合は何もしない
 
-@app.on_event("shutdown")
-def shutdown_event():
-    """アプリケーション終了時にデータベースを保存する"""
-    print("シャットダウン処理を開始します...")
-    db_instance.save_to_disk()
-    print("シャットダウン処理が完了しました。")
+
 
 if __name__ == "__main__":
     import uvicorn
