@@ -30,8 +30,16 @@ class AstroDBClient:
         self.token = None
 
     async def connect(self):
-        self.websocket = await websockets.connect(SERVER_URL)
-        logger.info("WebSocketに接続しました。")
+        retries = 5
+        for i in range(retries):
+            try:
+                self.websocket = await websockets.connect(SERVER_URL)
+                logger.info("WebSocketに接続しました。")
+                return
+            except (websockets.exceptions.ConnectionClosedOK, ConnectionRefusedError) as e:
+                logger.warning(f"接続試行 {i+1}/{retries} に失敗しました: {e}")
+                await asyncio.sleep(1) # 1秒待機してからリトライ
+        raise Exception(f"WebSocket接続に失敗しました。{retries} 回リトライしましたが接続できませんでした。")
 
     async def disconnect(self):
         if self.websocket:
@@ -51,6 +59,8 @@ async def insert_test_data(client: AstroDBClient, num_documents: int):
     logger.info(f"--- {num_documents} 件のテストデータ挿入を開始します ---")
     
     # ユーザー登録とログイン
+    # persistence_test.py はクライアントとして動作するため、サーバー側のauth_engineを直接呼び出すのではなく
+    # WebSocket経由でREGISTERとLOGINコマンドを送信する
     response = await client.send_command({"command": "REGISTER", "username": TEST_USERNAME, "password": TEST_PASSWORD})
     if response.get("status") == "ok":
         logger.info("テストユーザーを登録しました。")
