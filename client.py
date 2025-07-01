@@ -123,6 +123,73 @@ class AstroDBClient:
         except ValueError:
             print("< エラー: 無効なJSON形式です。キーと文字列はダブルクォートで囲ってください。")
 
+    async def handle_find(self, parts):
+        if not self.token:
+            print("< エラー: このコマンドを実行するにはまずログインしてください。")
+            return
+
+        if len(parts) < 2:
+            print("< 使用法: find <collection_name> [json_query]")
+            return
+        
+        collection = parts[1]
+        query_str = " ".join(parts[2:]) if len(parts) > 2 else "{}"
+        try:
+            query = ujson.loads(query_str)
+            command = {"command": "FIND", "collection": collection, "query": query}
+            response = await self.send_command(command)
+            print(f"< {response}")
+        except ValueError:
+            print("< エラー: 無効なJSON形式です。キーと文字列はダブルクォートで囲ってください。")
+
+    async def handle_update(self, parts):
+        if not self.token:
+            print("< エラー: このコマンドを実行するにはまずログインしてください。")
+            return
+
+        if len(parts) < 4:
+            print("< 使用法: update <collection_name> <json_query> <json_update_data>")
+            return
+        
+        collection = parts[1]
+        # ここで、クエリと更新データを正しく分割する必要があります。
+        # 簡単な実装として、最初の '{' から '}' までをクエリと仮定します。
+        try:
+            user_input_str = " ".join(parts[2:])
+            first_brace = user_input_str.find('{')
+            last_brace = user_input_str.rfind('}')
+            # この方法はネストされたJSONに弱いですが、基本的なケースに対応します
+            # より堅牢な実装には正規表現などが必要です
+            query_str = user_input_str[:last_brace + 1]
+            update_str = user_input_str[last_brace + 2:]
+
+            query = ujson.loads(query_str)
+            update_data = ujson.loads(update_str)
+            command = {"command": "UPDATE_ONE", "collection": collection, "query": query, "update_data": update_data}
+            response = await self.send_command(command)
+            print(f"< {response}")
+        except (ValueError, IndexError):
+            print("< エラー: 無効なJSON形式またはコマンド形式です。キーと文字列はダブルクォートで囲ってください。")
+
+    async def handle_delete(self, parts):
+        if not self.token:
+            print("< エラー: このコマンドを実行するにはまずログインしてください。")
+            return
+
+        if len(parts) < 2:
+            print("< 使用法: delete <collection_name> [json_query]")
+            return
+        
+        collection = parts[1]
+        query_str = " ".join(parts[2:]) if len(parts) > 2 else "{}"
+        try:
+            query = ujson.loads(query_str)
+            command = {"command": "DELETE_ONE", "collection": collection, "query": query}
+            response = await self.send_command(command)
+            print(f"< {response}")
+        except ValueError:
+            print("< エラー: 無効なJSON形式です。キーと文字列はダブルクォートで囲ってください。")
+
 if __name__ == "__main__":
     client = AstroDBClient()
     try:
