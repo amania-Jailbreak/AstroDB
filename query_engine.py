@@ -4,6 +4,20 @@ from typing import Any
 class QueryEngine:
     """ドキュメントがクエリ条件に一致するかを判断するエンジン"""
 
+    def _get_nested_value(self, document: dict, key_path: str):
+        """
+        ドット記法で指定されたパスに基づいて、ネストされたドキュメントから値を取得する。
+        例: "user.profile.age"
+        """
+        keys = key_path.split('.')
+        current_value = document
+        for key in keys:
+            if isinstance(current_value, dict) and key in current_value:
+                current_value = current_value[key]
+            else:
+                return None  # パスが見つからない場合
+        return current_value
+
     def _match_field(self, doc_value: Any, query_value: Any) -> bool:
         """
         単一のドキュメントフィールドがクエリ値に一致するかをチェックするヘルパーメソッド。
@@ -30,6 +44,7 @@ class QueryEngine:
                     if not isinstance(op_value, list):
                         return False # $in の値はリストである必要がある
                     if isinstance(doc_value, list):
+                        # ドキュメントの値がリストの場合、クエリのいずれかの値が含まれているか
                         if not any(item in op_value for item in doc_value):
                             return False
                     elif doc_value not in op_value:
@@ -42,12 +57,31 @@ class QueryEngine:
                             return False
                     elif doc_value in op_value:
                         return False
+                elif op == "$all": # 配列内の全要素が一致
+                    if not isinstance(doc_value, list) or not isinstance(op_value, list):
+                        return False
+                    if not all(item in doc_value for item in op_value):
+                        return False
+                elif op == "$elemMatch": # 配列内の要素が指定されたクエリに一致
+                    if not isinstance(doc_value, list) or not isinstance(op_value, dict):
+                        return False
+                    if not any(self.matches(item, op_value) for item in doc_value):
+                        return False
                 else:
                     # 未知の演算子
                     return False
         else:
             # シンプルな値の一致
-            if doc_value != query_value:
+            if isinstance(doc_value, list) and isinstance(query_value, list):
+                # 両方がリストの場合、完全一致をチェック
+                if doc_value != query_value:
+                    return False
+            elif isinstance(doc_value, list):
+                # doc_valueがリストで、query_valueが単一の値の場合、query_valueがdoc_valueに含まれているかチェック
+                if query_value not in doc_value:
+                    return False
+            elif doc_value != query_value:
+                # それ以外の場合、単純な値の一致をチェック
                 return False
         return True
 
@@ -74,10 +108,13 @@ class QueryEngine:
             return False
 
         for key, value in query.items():
-            if key not in document:
+            # ドット記法を処理
+            doc_value = self._get_nested_value(document, key)
+            
+            if doc_value is None and key not in document: # ネストされたパスが見つからない、かつトップレベルにもキーがない
                 return False
             
-            if not self._match_field(document[key], value):
+            if not self._match_field(doc_value, value):
                 return False
         return True
 
@@ -89,10 +126,14 @@ if __name__ == '__main__':
     print("--- クエリエンジンのテスト実行 ---")
     engine = QueryEngine()
 
-    doc1 = {"title": "AstroDB", "author": "Amani", "year": 2025, "tags": ["db", "python"]}
-    doc2 = {"title": "WebApp", "author": "Amani", "year": 2024, "tags": ["web", "js"]}
-    doc3 = {"title": "AstroDB Guide", "author": "Gemini", "year": 2025, "tags": ["db", "guide"]}
-    doc4 = {"title": "Another DB", "author": "Bob", "year": 2023, "tags": ["db", "sql"]}
+    doc1 = {"title": "AstroDB", "author": "Amani", "year": 2025, "tags": ["db", "python"], "user": {"profile": {"age": 30, "city": "Tokyo"}}}
+    doc2 = {"title": "WebApp", "author": "Amani", "year": 2024, "tags": ["web", "js"], "user": {"profile": {"age": 25, "city": "Osaka"}}}
+    doc3 = {"title": "AstroDB Guide", "author": "Gemini", "year": 2025, "tags": ["db", "guide"], "user": {"profile": {"age": 30, "city": "Tokyo"}}}
+    doc4 = {"title": "Another DB", "author": "Bob", "year": 2023, "tags": ["db", "sql"], "user": {"profile": {"age": 35, "city": "Nagoya"}}}
+    doc5 = {"title": "Array Test", "items": [{"id": 1, "value": "A"}, {"id": 2, "value": "B"}]}
+    doc6 = {"title": "Mixed Tags", "tags": ["python", "ai", "ml"]}
+    doc7 = {"title": "Single Tag", "tags": ["python"]}
+    doc8 = {"title": "No Python", "tags": ["java", "c++"]}
 
     # 1. シンプルな一致テスト
     print("\n1. シンプルな一致テスト")
