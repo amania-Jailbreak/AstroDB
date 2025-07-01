@@ -123,7 +123,6 @@ class AstroDB:
             self._db["collections"][collection_name].append(document)
 
             self._update_indexes_on_insert(collection_name, document)
-            self.save_to_disk() # 変更をディスクに保存
             
             return document
 
@@ -144,7 +143,6 @@ class AstroDB:
                 self._db["collections"][collection_name].append(document)
                 self._update_indexes_on_insert(collection_name, document)
                 inserted_docs.append(document)
-            self.save_to_disk()
             return inserted_docs
 
     def _update_indexes_on_insert(self, collection_name: str, document: dict):
@@ -215,7 +213,6 @@ class AstroDB:
                     
                     # インデックスを効率的に更新
                     self._update_indexes_on_update(collection_name, old_doc, doc)
-                    self.save_to_disk() # 変更をディスクに保存
                     return doc
             return None
 
@@ -243,8 +240,6 @@ class AstroDB:
                     
                     self._update_indexes_on_update(collection_name, old_doc, doc)
                     updated_count += 1
-            if updated_count > 0:
-                self.save_to_disk()
             return updated_count
 
     def delete_one(
@@ -270,7 +265,6 @@ class AstroDB:
                     self._update_indexes_on_delete(
                         collection_name, deleted_doc
                     )  # インデックス更新
-                    self.save_to_disk() # 変更をディスクに保存
                     return deleted_doc
             return None
 
@@ -292,8 +286,6 @@ class AstroDB:
                     deleted_doc = self._db["collections"][collection_name].pop(i)
                     self._update_indexes_on_delete(collection_name, deleted_doc)
                     deleted_count += 1
-            if deleted_count > 0:
-                self.save_to_disk()
             return deleted_count
 
     def find_one(self, collection_name: str, query: dict, owner_id: str) -> dict | None:

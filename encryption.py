@@ -63,4 +63,24 @@ def decrypt(encrypted_data: bytes) -> str:
         # キーが違う、データが破損しているなどの場合に発生
         raise ValueError("復号に失敗しました。データが破損しているか、キーが不正です。")
 
-if __name__ == '__main__':    # モジュールの動作テスト    logger.info("--- 暗号化モジュールのテスト実行 ---")        # .envファイルにキーがなければ生成される    logger.info(f"使用されるキー (最初の10文字): {encryption_key.decode()[:10]}...")    original_text = '{"command": "SET", "key": "mykey", "value": "これは秘密の情報です"}'    logger.info(f"元のデータ: {original_text}")    # 暗号化    encrypted = encrypt(original_text)    logger.info(f"暗号化されたデータ (一部): {encrypted[:50]}...")    # 復号    decrypted = decrypt(encrypted)    logger.info(f"復号されたデータ: {decrypted}")    # テスト検証    assert original_text == decrypted    logger.info("\nテスト成功！暗号化と復号が正常に機能しています。")
+if __name__ == '__main__':
+    # モジュールの動作テスト
+    logger.info("--- 暗号化モジュールのテスト実行 ---")
+    
+    # .envファイルにキーがなければ生成される
+    logger.info(f"使用されるキー (最初の10文字): {encryption_key.decode()[:10]}...")
+
+    original_text = '{"command": "SET", "key": "mykey", "value": "これは秘密の情報です"}'
+    logger.info(f"元のデータ: {original_text}")
+
+    # 暗号化
+    encrypted = encrypt(original_text)
+    logger.info(f"暗号化されたデータ (一部): {encrypted[:50]}...")
+
+    # 復号
+    decrypted = decrypt(encrypted)
+    logger.info(f"復号されたデータ: {decrypted}")
+
+    # テスト検証
+    assert original_text == decrypted
+    logger.info("\nテスト成功！暗号化と復号が正常に機能しています。")

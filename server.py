@@ -3,6 +3,7 @@ import ujson
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Any
 import logging
+import asyncio
 
 from contextlib import asynccontextmanager
 
@@ -15,15 +16,27 @@ import auth_engine
 import automation_engine # automation_engineをインポート
 from database import db_instance # データベースのシングルトンインスタンス
 
+async def save_database_periodically(interval_minutes: int):
+    while True:
+        await asyncio.sleep(interval_minutes * 60)
+        logger.info(f"定期保存: {interval_minutes} 分が経過しました。データベースを保存します。")
+        db_instance.save_to_disk()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # アプリケーション起動時の処理
-    # （今回は特にないが、将来的にDB接続プールなどを作成する場合はここに書く）
     logger.info("サーバーが起動しました。")
+    # 定期保存タスクを開始
+    save_task = asyncio.create_task(save_database_periodically(interval_minutes=1)) # 1分ごとに保存
     yield
     # アプリケーション終了時の処理
     logger.info("シャットダウン処理を開始します...")
-    db_instance.save_to_disk()
+    save_task.cancel() # 定期保存タスクをキャンセル
+    try:
+        await save_task # タスクが終了するのを待つ
+    except asyncio.CancelledError:
+        logger.info("定期保存タスクがキャンセルされました。")
+    db_instance.save_to_disk() # 最終保存
     logger.info("シャットダウン処理が完了しました。")
 
 app = FastAPI(lifespan=lifespan)
