@@ -15,4 +15,5 @@ __pycache__/
 
 # Database file
 database.json.encrypted
+database.*
 database.adb
