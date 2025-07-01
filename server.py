@@ -40,19 +40,21 @@ async def lifespan(app: FastAPI):
 
     # 定期保存タスクを開始
     save_task = asyncio.create_task(save_database_periodically(interval_minutes=1)) # 1分ごとに保存
-    yield
-    # アプリケーション終了時の処理
-    logger.info("シャットダウン処理を開始します...")
-    save_task.cancel() # 定期保存タスクをキャンセル
     try:
-        await save_task # タスクが終了するのを待つ
-    except asyncio.CancelledError:
-        logger.info("定期保存タスクがキャンセルされました。")
-    db_instance.save_to_disk() # 最終保存
-    logger.info("シャットダウン処理が完了しました。")
+        yield
+    finally:
+        # アプリケーション終了時の処理
+        logger.info("シャットダウン処理を開始します...")
+        save_task.cancel() # 定期保存タスクをキャンセル
+        try:
+            await save_task # タスクが終了するのを待つ
+        except asyncio.CancelledError:
+            logger.info("定期保存タスクがキャンセルされました。")
+        db_instance.save_to_disk() # 最終保存
+        logger.info("シャットダウン処理が完了しました。")
 
-    # ロギングリスナーを停止
-    listener.stop()
+        # ロギングリスナーを停止
+        listener.stop()
 
 app = FastAPI(lifespan=lifespan)
 
