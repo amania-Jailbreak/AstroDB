@@ -74,7 +74,17 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "collectionとdocumentが必要です。"}
         return response
 
-    # 他のコマンド (FIND, UPDATE, DELETEなど) はここに追加していく
+    if command == "FIND":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        if collection:
+            found_docs = db_instance.find(collection, query, owner_id=owner_id)
+            response = {"status": "ok", "data": found_docs}
+        else:
+            response = {"status": "error", "message": "collectionが必要です。"}
+        return response
+
+    # 他のコマンド (UPDATE, DELETEなど) はここに追加していく
 
     return response
 
