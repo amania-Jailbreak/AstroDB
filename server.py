@@ -134,6 +134,28 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "collectionが必要です。"}
         return response
 
+    if command == "BACKUP":
+        # ロールベースのアクセス制御の例: adminロールのみがバックアップ可能
+        if user_payload.get("role") == "admin":
+            result_message = automation_engine.backup_database()
+            response = {"status": "ok", "message": result_message}
+        else:
+            response = {"status": "error", "message": "権限がありません。"}
+        return response
+
+    if command == "RESTORE":
+        # ロールベースのアクセス制御の例: adminロールのみが復元可能
+        if user_payload.get("role") == "admin":
+            backup_filename = data.get("filename")
+            if backup_filename:
+                result_message = automation_engine.restore_database(backup_filename)
+                response = {"status": "ok", "message": result_message}
+            else:
+                response = {"status": "error", "message": "バックアップファイル名が必要です。"}
+        else:
+            response = {"status": "error", "message": "権限がありません。"}
+        return response
+
     return response
 
 @app.websocket("/ws")

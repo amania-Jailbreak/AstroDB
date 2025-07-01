@@ -78,6 +78,8 @@ class AstroDBClient:
         print("delete <coll> <query>  - ドキュメントを削除します (例: delete posts {\"title\":\"hello\"})")
         print("find_one <coll> <json> - ドキュメントを1つ検索します (例: find_one posts {\"title\":\"hello\"})")
         print("find_many <coll> <json> - ドキュメントを複数検索します (例: find_many posts {\"status\":\"published\"})")
+        print("backup            - データベースをバックアップします")
+        print("restore <filename> - 指定されたバックアップファイルからデータベースを復元します")
         print("help              - このヘルプメッセージを表示します")
         print("exit              - クライアントを終了します")
         print("---------------------------\n")
