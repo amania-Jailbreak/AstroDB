@@ -172,6 +172,20 @@ class AstroDB:
                     return deleted_doc
             return None
 
+    def find_one(self, collection_name: str, query: dict, owner_id: str) -> dict | None:
+        """
+        指定されたコレクションからクエリに一致するドキュメントを1つ検索する。
+        owner_idに紐づくドキュメントのみを返す。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return None
+            
+            for doc in self._db["collections"][collection_name]:
+                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
+                    return doc
+            return None
+
     # --- インデックス管理API (スタブ) ---
 
     def create_index(self, collection_name: str, field: str):

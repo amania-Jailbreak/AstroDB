@@ -111,6 +111,19 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "collectionとqueryが必要です。"}
         return response
 
+    if command == "FIND_ONE":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        if collection and query:
+            found_doc = db_instance.find_one(collection, query, owner_id=owner_id)
+            if found_doc:
+                response = {"status": "ok", "data": found_doc}
+            else:
+                response = {"status": "error", "message": "ドキュメントが見つからないか、権限がありません。"}
+        else:
+            response = {"status": "error", "message": "collectionとqueryが必要です。"}
+        return response
+
     return response
 
 @app.websocket("/ws")

@@ -53,6 +53,14 @@ class AstroDBClient:
                     await self.handle_login()
                 elif cmd == "insert":
                     await self.handle_insert(parts)
+                elif cmd == "find":
+                    await self.handle_find(parts)
+                elif cmd == "update":
+                    await self.handle_update(parts)
+                elif cmd == "delete":
+                    await self.handle_delete(parts)
+                elif cmd == "find_one":
+                    await self.handle_find_one(parts)
                 else:
                     print(f"不明なコマンドです: {cmd}")
 
@@ -68,6 +76,7 @@ class AstroDBClient:
         print("find <coll> <json>   - ドキュメントを検索します (例: find posts {\"title\":\"hello\"})")
         print("update <coll> <query> <json> - ドキュメントを更新します (例: update posts {\"title\":\"hello\"} {\"status\":\"published\"})")
         print("delete <coll> <query>  - ドキュメントを削除します (例: delete posts {\"title\":\"hello\"})")
+        print("find_one <coll> <json> - ドキュメントを1つ検索します (例: find_one posts {\"title\":\"hello\"})")
         print("help              - このヘルプメッセージを表示します")
         print("exit              - クライアントを終了します")
         print("---------------------------\n")
