@@ -154,6 +154,24 @@ class AstroDB:
                     return doc
             return None
 
+    def delete_one(self, collection_name: str, query: dict, owner_id: str) -> dict | None:
+        """
+        指定されたコレクションからクエリに一致するドキュメントを1つ削除する。
+        owner_idに紐づくドキュメントのみを削除対象とする。
+        """
+        with self._lock:
+            if collection_name not in self._db["collections"]:
+                return None
+            
+            # 逆順にイテレートして削除してもインデックスがずれないようにする
+            for i in range(len(self._db["collections"][collection_name]) - 1, -1, -1):
+                doc = self._db["collections"][collection_name][i]
+                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
+                    deleted_doc = self._db["collections"][collection_name].pop(i)
+                    self._rebuild_indexes() # 簡単のため、削除時はインデックスを再構築
+                    return deleted_doc
+            return None
+
     # --- インデックス管理API (スタブ) ---
 
     def create_index(self, collection_name: str, field: str):

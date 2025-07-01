@@ -98,7 +98,18 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "error", "message": "collection, query, update_dataが必要です。"}
         return response
 
-    # 他のコマンド (DELETEなど) はここに追加していく
+    if command == "DELETE_ONE":
+        collection = data.get("collection")
+        query = data.get("query", {})
+        if collection and query:
+            deleted_doc = db_instance.delete_one(collection, query, owner_id=owner_id)
+            if deleted_doc:
+                response = {"status": "ok", "data": deleted_doc}
+            else:
+                response = {"status": "error", "message": "削除対象のドキュメントが見つからないか、権限がありません。"}
+        else:
+            response = {"status": "error", "message": "collectionとqueryが必要です。"}
+        return response
 
     return response
 
