@@ -65,9 +65,9 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 data.get("username"), data.get("password")
             )
             if success:
-                response = {"status": "ok", "message": "ユーザー登録が成功しました。"}
+                response = {"status": "ok", "message": "User registration successful."}
             else:
-                response = {"status": "error", "message": "ユーザーが既に存在します。"}
+                response = {"status": "error", "message": "User already exists."}
             return response
 
         if command == "LOGIN":
