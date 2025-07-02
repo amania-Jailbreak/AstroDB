@@ -287,12 +287,12 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             field = data.get("field")
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "collectionは必須の文字列です。"}
+                return {"status": "error", "message": "Collection must be a non-empty string."}
             if not isinstance(field, str) or not field:
-                return {"status": "error", "message": "fieldは必須の文字列です。"}
+                return {"status": "error", "message": "Field must be a non-empty string."}
             
             db_instance.create_index(collection, field)
-            response = {"status": "ok", "message": f"コレクション '{collection}' のフィールド '{field}' にインデックスを作成しました。"}
+            response = {"status": "ok", "message": f"Index created on collection '{collection}', field '{field}'."}
             return response
 
         if command == "BACKUP":
