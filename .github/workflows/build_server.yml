@@ -23,6 +23,8 @@ jobs:
 
     - name: Install dependencies
       run: |
+        apt-get update
+        apt-get install -y binutils
         python -m pip install --upgrade pip
         pip install pyinstaller # PyInstaller をインストール
         pip install -r requirements.txt # プロジェクトの依存関係をインストール
