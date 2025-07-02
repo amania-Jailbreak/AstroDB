@@ -433,6 +433,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 response = {
                     "status": "error",
                     "message": "Old password and new password are required.",
+                    "code": ERROR_PASSWORD_FIELDS_REQUIRED,
                 }
             return response
 
