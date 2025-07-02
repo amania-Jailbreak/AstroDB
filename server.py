@@ -347,8 +347,8 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
 
         return response
     except Exception as e:
-        logger.exception(f"handle_commandで予期せぬエラーが発生しました: {e}")
-        return {"status": "error", "message": f"サーバー内部エラー: {e}"}
+        logger.exception(f"An unexpected error occurred in handle_command: {e}")
+        return {"status": "error", "message": f"Internal server error: {e}"}
 
 
 @app.websocket("/ws")
