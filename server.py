@@ -154,11 +154,13 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 return {
                     "status": "error",
                     "message": "Collection must be a non-empty string.",
+                    "code": ERROR_COLLECTION_REQUIRED,
                 }
             if not isinstance(documents, list) or not documents:
                 return {
                     "status": "error",
                     "message": "Documents must be a non-empty list.",
+                    "code": ERROR_DOCUMENT_REQUIRED,
                 }
 
             # Set owner_id for each document
@@ -454,12 +456,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = ujson.loads(raw_data)
                 response = await handle_command(websocket, data)
             except (ValueError, TypeError) as e:
-                response = {"status": "error", "message": "Invalid JSON format."}
+                response = {"status": "error", "message": "Invalid JSON format.", "code": ERROR_INVALID_JSON_FORMAT}
                 logger.error(f"Received invalid JSON format: {raw_data}, Error: {e}")
             except Exception as e:
                 response = {
                     "status": "error",
                     "message": "An internal server error occurred.",
+                    "code": ERROR_INTERNAL_SERVER_ERROR,
                 }
                 logger.exception(
                     f"An unexpected error occurred during handle_command execution: {e}"

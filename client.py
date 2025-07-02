@@ -105,7 +105,15 @@ class AstroDBClient:
         password = await asyncio.to_thread(getpass.getpass, "  Password: ")
         command = {"command": "REGISTER", "username": username, "password": password}
         response = await self.send_command(command)
-        logger.info(f"< {response}")
+        if response.get("status") == "error":
+            error_code = response.get("code")
+            message = response.get("message", "不明なエラーが発生しました。")
+            if error_code == "USER_ALREADY_EXISTS":
+                logger.error(f"< エラー: ユーザー '{username}' は既に存在します。")
+            else:
+                logger.error(f"< エラー ({error_code}): {message}")
+        else:
+            logger.info(f"< {response}")
 
     async def handle_login(self):
         username = await asyncio.to_thread(input, "  Username: ")
@@ -116,7 +124,12 @@ class AstroDBClient:
             self.token = response["token"]
             logger.info("< ログイン成功。認証トークンを保存しました。")
         else:
-            logger.info(f"< {response}")
+            error_code = response.get("code")
+            message = response.get("message", "不明なエラーが発生しました。")
+            if error_code == "INVALID_CREDENTIALS":
+                logger.error("< エラー: 無効なユーザー名またはパスワードです。")
+            else:
+                logger.error(f"< エラー ({error_code}): {message}")
 
     async def handle_insert(self, parts):
         if not self.token:
