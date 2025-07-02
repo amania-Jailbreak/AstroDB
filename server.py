@@ -270,11 +270,13 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 return {
                     "status": "error",
                     "message": "Collection must be a non-empty string.",
+                    "code": ERROR_COLLECTION_REQUIRED,
                 }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
                     "message": "Query must be a dictionary.",
+                    "code": ERROR_QUERY_REQUIRED,
                 }
 
             deleted_doc = db_instance.delete_one(collection, query, owner_id=owner_id)
@@ -284,6 +286,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 response = {
                     "status": "error",
                     "message": "Document to delete not found or insufficient permissions.",
+                    "code": ERROR_DOC_NOT_FOUND_OR_PERMISSION_DENIED,
                 }
             return response
 
