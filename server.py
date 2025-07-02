@@ -82,7 +82,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             else:
                 response = {
                     "status": "error",
-                    "message": "ユーザー名またはパスワードが不正です。",
+                    "message": "Invalid username or password.",
                 }
             return response
 
