@@ -403,9 +403,11 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                     response = {
                         "status": "error",
                         "message": "Backup filename is required.",
+                        "code": ERROR_BACKUP_FILENAME_REQUIRED,
                     }
             else:
-                response = {"status": "error", "message": "Permission denied."}
+                response = {"status": "error", "message": "Permission denied.", "code": ERROR_PERMISSION_DENIED}
+            return response
             return response
 
         if command == "CHANGE_PASSWORD":
