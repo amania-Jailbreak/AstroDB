@@ -168,14 +168,14 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             query = data.get("query", {})
             update_data = data.get("update_data", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "collectionは必須の文字列です。"}
+                return {"status": "error", "message": "Collection must be a non-empty string."}
             if not isinstance(query, dict):
                 return {
                     "status": "error",
-                    "message": "queryは辞書である必要があります。",
+                    "message": "Query must be a dictionary.",
                 }
             if not isinstance(update_data, dict) or not update_data:
-                return {"status": "error", "message": "update_dataは必須の辞書です。"}
+                return {"status": "error", "message": "Update data must be a non-empty dictionary."}
 
             updated_doc = db_instance.update_one(
                 collection, query, update_data, owner_id=owner_id
@@ -185,7 +185,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             else:
                 response = {
                     "status": "error",
-                    "message": "更新対象のドキュメントが見つからないか、権限がありません。",
+                    "message": "Document to update not found or insufficient permissions.",
                 }
             return response
 
