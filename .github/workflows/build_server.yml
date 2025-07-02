@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       # Needs to lock glibc version to 2.31, ubuntu 20.04 has glibc 2.31
-      image: ubuntu:22.04
+      image: ubuntu:20.04
 
     steps:
     - name: Checkout repository
