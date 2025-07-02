@@ -1,0 +1,47 @@
+name: Build AstroDB Server Executable
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x' # 使用するPythonのバージョンを指定 (例: '3.9', '3.10', '3.11')
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller # PyInstaller をインストール
+        pip install -r requirements.txt # プロジェクトの依存関係をインストール
+
+    - name: Build server executable
+      run: |
+        pyinstaller --onefile server.py
+      
+    - name: Upload server executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: astrodb-server-linux
+        path: dist/server
+        # 実行ファイルに実行権限を付与 (Linux環境でのみ有効)
+        retention-days: 7 # アーティファクトの保持期間 (任意)
+
+    - name: Verify executable (Optional)
+      run: |
+        # ビルドされた実行ファイルが存在することを確認
+        ls -l dist/server
+        # 実行可能であることを確認 (簡単なテスト)
+        # 注意: サーバーが起動しないように、一時的な環境変数などで制御する必要があるかもしれません
+        # 例: ./dist/server --test-mode &
+        # sleep 5
+        # killall server || true
