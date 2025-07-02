@@ -427,6 +427,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                     response = {
                         "status": "error",
                         "message": "Current password is incorrect.",
+                        "code": ERROR_INCORRECT_CURRENT_PASSWORD,
                     }
             else:
                 response = {
