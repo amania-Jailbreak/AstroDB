@@ -388,7 +388,8 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 result_message = automation_engine.backup_database()
                 response = {"status": "ok", "message": result_message}
             else:
-                response = {"status": "error", "message": "Permission denied."}
+                response = {"status": "error", "message": "Permission denied.", "code": ERROR_PERMISSION_DENIED}
+            return response
             return response
 
         if command == "RESTORE":
