@@ -12,6 +12,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Error Codes
+ERROR_UNKNOWN_COMMAND = "UNKNOWN_COMMAND"
+ERROR_USER_ALREADY_EXISTS = "USER_ALREADY_EXISTS"
+ERROR_INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+ERROR_AUTH_TOKEN_REQUIRED = "AUTH_TOKEN_REQUIRED"
+ERROR_INVALID_TOKEN = "INVALID_TOKEN"
+ERROR_COLLECTION_REQUIRED = "COLLECTION_REQUIRED"
+ERROR_DOCUMENT_REQUIRED = "DOCUMENT_REQUIRED"
+ERROR_INVALID_OWNER_ID = "INVALID_OWNER_ID"
+ERROR_QUERY_REQUIRED = "QUERY_REQUIRED"
+ERROR_UPDATE_DATA_REQUIRED = "UPDATE_DATA_REQUIRED"
+ERROR_DOC_NOT_FOUND_OR_PERMISSION_DENIED = "DOC_NOT_FOUND_OR_PERMISSION_DENIED"
+ERROR_FIELD_REQUIRED = "FIELD_REQUIRED"
+ERROR_PERMISSION_DENIED = "PERMISSION_DENIED"
+ERROR_BACKUP_FILENAME_REQUIRED = "BACKUP_FILENAME_REQUIRED"
+ERROR_INCORRECT_CURRENT_PASSWORD = "INCORRECT_CURRENT_PASSWORD"
+ERROR_PASSWORD_FIELDS_REQUIRED = "PASSWORD_FIELDS_REQUIRED"
+ERROR_INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR"
+ERROR_INVALID_JSON_FORMAT = "INVALID_JSON_FORMAT"
+
 # プロジェクトのモジュールをインポート
 import auth_engine
 import automation_engine  # automation_engineをインポート
@@ -55,11 +75,11 @@ app = FastAPI(lifespan=lifespan)
 async def handle_command(websocket: WebSocket, data: dict) -> dict:
     """受信したコマンドを解析し、適切なエンジンに処理を振り分ける"""
     command = data.get("command")
-    response = {"status": "error", "message": "Unknown command."}
+    response = {"status": "error", "message": "Unknown command.", "code": ERROR_UNKNOWN_COMMAND}
 
     try:
         # --- 認証が不要なコマンド ---
-        logger.info(f"受信したコマンド: {command}")
+        logger.info(f"Running command: {command}")
         if command == "REGISTER":
             success = auth_engine.register_user(
                 data.get("username"), data.get("password")
@@ -98,14 +118,21 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
         owner_id = user_payload.get(
             "sub"
         )  # トークンのsubject（ユーザー名）を所有者IDとする
+        logger.info(f"USER: {owner_id}")
 
         if command == "INSERT_ONE":
             collection = data.get("collection")
             document = data.get("document")
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(document, dict) or not document:
-                return {"status": "error", "message": "Document must be a non-empty dictionary."}
+                return {
+                    "status": "error",
+                    "message": "Document must be a non-empty dictionary.",
+                }
 
             # Permission check: If owner_id is specified in the document, ensure it matches the authenticated user
             if "owner_id" in document and document["owner_id"] != owner_id:
@@ -128,9 +155,15 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             documents = data.get("documents")
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(documents, list) or not documents:
-                return {"status": "error", "message": "Documents must be a non-empty list."}
+                return {
+                    "status": "error",
+                    "message": "Documents must be a non-empty list.",
+                }
 
             # Set owner_id for each document
             for doc in documents:
@@ -152,7 +185,10 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
@@ -168,14 +204,20 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             query = data.get("query", {})
             update_data = data.get("update_data", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
                     "message": "Query must be a dictionary.",
                 }
             if not isinstance(update_data, dict) or not update_data:
-                return {"status": "error", "message": "Update data must be a non-empty dictionary."}
+                return {
+                    "status": "error",
+                    "message": "Update data must be a non-empty dictionary.",
+                }
 
             updated_doc = db_instance.update_one(
                 collection, query, update_data, owner_id=owner_id
@@ -194,14 +236,20 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             query = data.get("query", {})
             update_data = data.get("update_data", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
                     "message": "Query must be a dictionary.",
                 }
             if not isinstance(update_data, dict) or not update_data:
-                return {"status": "error", "message": "Update data must be a non-empty dictionary."}
+                return {
+                    "status": "error",
+                    "message": "Update data must be a non-empty dictionary.",
+                }
 
             updated_count = db_instance.update_many(
                 collection, query, update_data, owner_id=owner_id
@@ -213,7 +261,10 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
@@ -234,7 +285,10 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
@@ -251,7 +305,10 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
@@ -272,7 +329,10 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
@@ -287,12 +347,21 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             field = data.get("field")
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "Collection must be a non-empty string."}
+                return {
+                    "status": "error",
+                    "message": "Collection must be a non-empty string.",
+                }
             if not isinstance(field, str) or not field:
-                return {"status": "error", "message": "Field must be a non-empty string."}
-            
+                return {
+                    "status": "error",
+                    "message": "Field must be a non-empty string.",
+                }
+
             db_instance.create_index(collection, field)
-            response = {"status": "ok", "message": f"Index created on collection '{collection}', field '{field}'."}
+            response = {
+                "status": "ok",
+                "message": f"Index created on collection '{collection}', field '{field}'.",
+            }
             return response
 
         if command == "BACKUP":
