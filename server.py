@@ -103,6 +103,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 response = {
                     "status": "error",
                     "message": "Invalid username or password.",
+                    "code": ERROR_INVALID_CREDENTIALS,
                 }
             return response
 
