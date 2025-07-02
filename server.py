@@ -103,15 +103,15 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             document = data.get("document")
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "collectionは必須の文字列です。"}
+                return {"status": "error", "message": "Collection must be a non-empty string."}
             if not isinstance(document, dict) or not document:
-                return {"status": "error", "message": "documentは必須の辞書です。"}
+                return {"status": "error", "message": "Document must be a non-empty dictionary."}
 
-            # 権限チェック: ドキュメントにowner_idが指定されている場合、認証されたユーザーと一致するか確認
+            # Permission check: If owner_id is specified in the document, ensure it matches the authenticated user
             if "owner_id" in document and document["owner_id"] != owner_id:
                 return {
                     "status": "error",
-                    "message": "他のユーザーのowner_idを持つドキュメントは挿入できません。",
+                    "message": "Cannot insert documents with another user's owner_id.",
                 }
 
             # ドキュメントにowner_idが指定されていない場合、認証されたユーザーのowner_idを設定
