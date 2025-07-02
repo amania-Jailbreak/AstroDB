@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 async def handle_command(websocket: WebSocket, data: dict) -> dict:
     """受信したコマンドを解析し、適切なエンジンに処理を振り分ける"""
     command = data.get("command")
-    response = {"status": "error", "message": "不明なコマンドです。"}
+    response = {"status": "error", "message": "Unknown command."}
 
     try:
         # --- 認証が不要なコマンド ---
