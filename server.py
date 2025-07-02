@@ -305,7 +305,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             return response
 
         if command == "RESTORE":
-            # ロールベースのアクセス制御の例: adminロールのみが復元可能
+            # Role-based access control example: Only admin role can restore
             if user_payload.get("role") == "admin":
                 backup_filename = data.get("filename")
                 if backup_filename:
@@ -314,10 +314,10 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 else:
                     response = {
                         "status": "error",
-                        "message": "バックアップファイル名が必要です。",
+                        "message": "Backup filename is required.",
                     }
             else:
-                response = {"status": "error", "message": "権限がありません。"}
+                response = {"status": "error", "message": "Permission denied."}
             return response
 
         if command == "CHANGE_PASSWORD":
