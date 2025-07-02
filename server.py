@@ -242,16 +242,19 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 return {
                     "status": "error",
                     "message": "Collection must be a non-empty string.",
+                    "code": ERROR_COLLECTION_REQUIRED,
                 }
             if not isinstance(query, dict):
                 return {
                     "status": "error",
                     "message": "Query must be a dictionary.",
+                    "code": ERROR_QUERY_REQUIRED,
                 }
             if not isinstance(update_data, dict) or not update_data:
                 return {
                     "status": "error",
                     "message": "Update data must be a non-empty dictionary.",
+                    "code": ERROR_UPDATE_DATA_REQUIRED,
                 }
 
             updated_count = db_instance.update_many(
