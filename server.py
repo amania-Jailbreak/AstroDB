@@ -366,11 +366,13 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 return {
                     "status": "error",
                     "message": "Collection must be a non-empty string.",
+                    "code": ERROR_COLLECTION_REQUIRED,
                 }
             if not isinstance(field, str) or not field:
                 return {
                     "status": "error",
                     "message": "Field must be a non-empty string.",
+                    "code": ERROR_FIELD_REQUIRED,
                 }
 
             db_instance.create_index(collection, field)
