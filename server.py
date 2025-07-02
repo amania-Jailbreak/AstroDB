@@ -89,11 +89,11 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
         # --- ここから先は認証が必要なコマンド ---
         token = data.get("token")
         if not token:
-            return {"status": "error", "message": "認証トークンが必要です。"}
+            return {"status": "error", "message": "Authentication token is required."}
 
         user_payload = auth_engine.decode_access_token(token)
         if not user_payload:
-            return {"status": "error", "message": "トークンが無効または期限切れです。"}
+            return {"status": "error", "message": "Invalid or expired token."}
 
         owner_id = user_payload.get(
             "sub"
