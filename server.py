@@ -213,11 +213,11 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "collectionは必須の文字列です。"}
+                return {"status": "error", "message": "Collection must be a non-empty string."}
             if not isinstance(query, dict):
                 return {
                     "status": "error",
-                    "message": "queryは辞書である必要があります。",
+                    "message": "Query must be a dictionary.",
                 }
 
             deleted_doc = db_instance.delete_one(collection, query, owner_id=owner_id)
@@ -226,7 +226,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             else:
                 response = {
                     "status": "error",
-                    "message": "削除対象のドキュメントが見つからないか、権限がありません。",
+                    "message": "Document to delete not found or insufficient permissions.",
                 }
             return response
 
