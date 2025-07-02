@@ -152,11 +152,11 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             query = data.get("query", {})
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "collectionは必須の文字列です。"}
+                return {"status": "error", "message": "Collection must be a non-empty string."}
             if not isinstance(query, dict):
                 return {
                     "status": "error",
-                    "message": "queryは辞書である必要があります。",
+                    "message": "Query must be a dictionary.",
                 }
 
             found_docs = db_instance.find(collection, query, owner_id=owner_id)
