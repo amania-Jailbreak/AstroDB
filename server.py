@@ -167,6 +167,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                     return {
                         "status": "error",
                         "message": "Cannot insert documents with another user's owner_id.",
+                        "code": ERROR_INVALID_OWNER_ID,
                     }
                 if "owner_id" not in doc:
                     doc["owner_id"] = owner_id
