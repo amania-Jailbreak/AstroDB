@@ -128,16 +128,16 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             collection = data.get("collection")
             documents = data.get("documents")
             if not isinstance(collection, str) or not collection:
-                return {"status": "error", "message": "collectionは必須の文字列です。"}
+                return {"status": "error", "message": "Collection must be a non-empty string."}
             if not isinstance(documents, list) or not documents:
-                return {"status": "error", "message": "documentsは必須のリストです。"}
+                return {"status": "error", "message": "Documents must be a non-empty list."}
 
-            # 各ドキュメントにowner_idを設定
+            # Set owner_id for each document
             for doc in documents:
                 if "owner_id" in doc and doc["owner_id"] != owner_id:
                     return {
                         "status": "error",
-                        "message": "他のユーザーのowner_idを持つドキュメントは挿入できません。",
+                        "message": "Cannot insert documents with another user's owner_id.",
                     }
                 if "owner_id" not in doc:
                     doc["owner_id"] = owner_id
