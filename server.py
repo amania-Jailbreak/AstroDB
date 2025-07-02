@@ -378,19 +378,19 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         logger.info("クライアントが切断しました。")
     except Exception as e:
-        logger.exception(f"予期せぬエラーが発生しました: {e}")
-        # クライアントにエラーを通知しようと試みる (接続がまだ生きていれば)
+        logger.exception(f"An unexpected error occurred: {e}")
+        # Attempt to notify the client of the error (if connection is still alive)
         try:
             await websocket.send_text(
                 ujson.dumps(
                     {
                         "status": "error",
-                        "message": "サーバー内部でエラーが発生しました。",
+                        "message": "An internal server error occurred.",
                     }
                 )
             )
         except Exception:
-            pass  # 接続が既に切れている場合は何もしない
+            pass  # Do nothing if the connection is already closed
 
 
 if __name__ == "__main__":
