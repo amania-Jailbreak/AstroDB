@@ -362,15 +362,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = ujson.loads(raw_data)
                 response = await handle_command(websocket, data)
             except (ValueError, TypeError) as e:
-                response = {"status": "error", "message": "無効なJSON形式です。"}
-                logger.error(f"無効なJSON形式を受信しました: {raw_data}, エラー: {e}")
+                response = {"status": "error", "message": "Invalid JSON format."}
+                logger.error(f"Received invalid JSON format: {raw_data}, Error: {e}")
             except Exception as e:
                 response = {
                     "status": "error",
-                    "message": "サーバー内部でエラーが発生しました。",
+                    "message": "An internal server error occurred.",
                 }
                 logger.exception(
-                    f"handle_commandの実行中に予期せぬエラーが発生しました: {e}"
+                    f"An unexpected error occurred during handle_command execution: {e}"
                 )
 
             await websocket.send_text(ujson.dumps(response))
