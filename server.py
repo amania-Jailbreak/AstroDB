@@ -283,6 +283,18 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             response = {"status": "ok", "data": found_docs}
             return response
 
+        if command == "CREATE_INDEX":
+            collection = data.get("collection")
+            field = data.get("field")
+            if not isinstance(collection, str) or not collection:
+                return {"status": "error", "message": "collectionは必須の文字列です。"}
+            if not isinstance(field, str) or not field:
+                return {"status": "error", "message": "fieldは必須の文字列です。"}
+            
+            db_instance.create_index(collection, field)
+            response = {"status": "ok", "message": f"コレクション '{collection}' のフィールド '{field}' にインデックスを作成しました。"}
+            return response
+
         if command == "BACKUP":
             # ロールベースのアクセス制御の例: adminロールのみがバックアップ可能
             if user_payload.get("role") == "admin":

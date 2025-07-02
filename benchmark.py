@@ -146,8 +146,8 @@ async def benchmark_find_one(client: AstroDBClient, num_queries: int):
         assert response.get("status") == "ok", f"挿入失敗: {response}"
         inserted_docs.append(response["data"])
 
-    # インデックスを作成 (もしあれば)
-    # await client.send_command({"command": "CREATE_INDEX", "collection": TEST_COLLECTION, "field": "unique_id"}) # サーバー側で実装が必要
+    # インデックスを作成
+    await client.send_command({"command": "CREATE_INDEX", "collection": TEST_COLLECTION, "field": "unique_id"})
 
     start_time = time.perf_counter()
     for doc in inserted_docs:
@@ -190,8 +190,8 @@ async def benchmark_update_one(client: AstroDBClient, num_updates: int):
         assert response.get("status") == "ok", f"挿入失敗: {response}"
         inserted_docs.append(response["data"])
 
-    # インデックスを作成 (もしあれば)
-    # await client.send_command({"command": "CREATE_INDEX", "collection": TEST_COLLECTION, "field": "update_id"}) # サーバー側で実装が必要
+    # インデックスを作成
+    await client.send_command({"command": "CREATE_INDEX", "collection": TEST_COLLECTION, "field": "update_id"})
 
     start_time = time.perf_counter()
     for doc in inserted_docs:
@@ -239,8 +239,8 @@ async def benchmark_delete_one(client: AstroDBClient, num_deletes: int):
         assert response.get("status") == "ok", f"挿入失敗: {response}"
         inserted_docs.append(response["data"])
 
-    # インデックスを作成 (もしあれば)
-    # await client.send_command({"command": "CREATE_INDEX", "collection": TEST_COLLECTION, "field": "delete_id"}) # サーバー側で実装が必要
+    # インデックスを作成
+    await client.send_command({"command": "CREATE_INDEX", "collection": TEST_COLLECTION, "field": "delete_id"})
 
     start_time = time.perf_counter()
     for doc in inserted_docs:
@@ -269,10 +269,10 @@ async def main():
     logger.info("=====================================")
 
     # ベンチマーク設定
-    NUM_DOCUMENTS_INSERT = 1000
-    NUM_QUERIES_FIND = 500
-    NUM_UPDATES = 500
-    NUM_DELETES = 500
+    NUM_DOCUMENTS_INSERT = 5000
+    NUM_QUERIES_FIND = 5000
+    NUM_UPDATES = 5000
+    NUM_DELETES = 5000
 
     client = AstroDBClient()
     try:

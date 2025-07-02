@@ -56,7 +56,20 @@ class AstroDB:
                     return
 
                 decrypted_json = encryption.decrypt(encrypted_data)
-                self._db = ujson.loads(decrypted_json)
+                loaded_db = ujson.loads(decrypted_json)
+                
+                # Convert collections from list to dict keyed by _id for efficient access
+                new_collections = {}
+                for col_name, docs_list in loaded_db.get("collections", {}).items():
+                    # Ensure docs_list is iterable and contains dicts with "_id"
+                    if isinstance(docs_list, list):
+                        new_collections[col_name] = {doc["_id"]: doc for doc in docs_list if isinstance(doc, dict) and "_id" in doc}
+                    elif isinstance(docs_list, dict): # Already in dict format
+                        new_collections[col_name] = docs_list
+                loaded_db["collections"] = new_collections
+                
+                self._db = loaded_db
+                
                 # 互換性のため、古いDB形式の場合に_index_definitionsを追加
                 if "_index_definitions" not in self._db:
                     self._db["_index_definitions"] = {}
@@ -82,14 +95,14 @@ class AstroDB:
     def _rebuild_indexes(self):
         """データベースのロード時にインデックスを再構築する内部メソッド"""
         self._indexes = {}
-        for collection_name, documents in self._db["collections"].items():
+        for collection_name, documents_dict in self._db["collections"].items():
             if collection_name not in self._indexes:
                 self._indexes[collection_name] = {}
 
             # _idは常にインデックスされると仮定
             if "_id" not in self._indexes[collection_name]:
                 self._indexes[collection_name]["_id"] = {}
-            for doc in documents:
+            for doc in documents_dict.values(): # Iterate over values (documents) in the dict
                 if "_id" in doc:
                     self._indexes[collection_name]["_id"][doc["_id"]] = doc
 
@@ -98,7 +111,7 @@ class AstroDB:
                 for field in self._db["_index_definitions"][collection_name]:
                     if field not in self._indexes[collection_name]:
                         self._indexes[collection_name][field] = {}
-                    for doc in documents:
+                    for doc in documents_dict.values(): # Iterate over values (documents) in the dict
                         if field in doc:
                             self._indexes[collection_name][field][doc[field]] = doc
 
@@ -112,7 +125,7 @@ class AstroDB:
         with self._lock:
             # コレクションが存在しない場合は作成
             if collection_name not in self._db["collections"]:
-                self._db["collections"][collection_name] = []
+                self._db["collections"][collection_name] = {}
 
             doc_id = str(uuid.uuid4())  # UUIDを生成
             document["_id"] = doc_id  # ドキュメントに_idを追加
@@ -120,7 +133,7 @@ class AstroDB:
             # ドキュメントに所有者情報を追加
             document["owner_id"] = owner_id
 
-            self._db["collections"][collection_name].append(document)
+            self._db["collections"][collection_name][doc_id] = document # Add to dict
 
             self._update_indexes_on_insert(collection_name, document)
             
@@ -133,14 +146,14 @@ class AstroDB:
         """
         with self._lock:
             if collection_name not in self._db["collections"]:
-                self._db["collections"][collection_name] = []
+                self._db["collections"][collection_name] = {}
 
             inserted_docs = []
             for document in documents:
                 doc_id = str(uuid.uuid4())
                 document["_id"] = doc_id
                 document["owner_id"] = owner_id
-                self._db["collections"][collection_name].append(document)
+                self._db["collections"][collection_name][doc_id] = document # Add to dict
                 self._update_indexes_on_insert(collection_name, document)
                 inserted_docs.append(document)
             return inserted_docs
@@ -198,22 +211,27 @@ class AstroDB:
             if collection_name not in self._db["collections"]:
                 return None
             
-            for i, doc in enumerate(self._db["collections"][collection_name]):
-                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
-                    # 更新前のドキュメントをコピー
-                    old_doc = doc.copy()
+            # まず、find_oneを使って更新対象のドキュメントを見つける
+            target_doc = self.find_one(collection_name, query, owner_id)
+            if not target_doc:
+                return None # ドキュメントが見つからないか、権限がない
 
-                    # _idとowner_idは更新不可
-                    if "_id" in update_data: del update_data["_id"]
-                    if "owner_id" in update_data: del update_data["owner_id"]
-                    
-                    # ドキュメントを更新
-                    doc.update(update_data)
-                    self._db["collections"][collection_name][i] = doc
-                    
-                    # インデックスを効率的に更新
-                    self._update_indexes_on_update(collection_name, old_doc, doc)
-                    return doc
+            doc_id = target_doc["_id"]
+            
+            # 更新前のドキュメントをコピー
+            old_doc = target_doc.copy()
+
+            # _idとowner_idは更新不可
+            if "_id" in update_data: del update_data["_id"]
+            if "owner_id" in update_data: del update_data["owner_id"]
+            
+            # ドキュメントを更新
+            target_doc.update(update_data)
+            self._db["collections"][collection_name][doc_id] = target_doc # Update in dict
+            
+            # インデックスを効率的に更新
+            self._update_indexes_on_update(collection_name, old_doc, target_doc)
+            return target_doc
             return None
 
     def update_many(self, collection_name: str, query: dict, update_data: dict, owner_id: str) -> int:
@@ -228,18 +246,21 @@ class AstroDB:
                 return 0
             
             updated_count = 0
-            for i, doc in enumerate(self._db["collections"][collection_name]):
-                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
-                    old_doc = doc.copy()
+            # find_manyを使って更新対象のドキュメントをすべて見つける
+            target_docs = self.find_many(collection_name, query, owner_id)
 
-                    if "_id" in update_data: del update_data["_id"]
-                    if "owner_id" in update_data: del update_data["owner_id"]
-                    
-                    doc.update(update_data)
-                    self._db["collections"][collection_name][i] = doc
-                    
-                    self._update_indexes_on_update(collection_name, old_doc, doc)
-                    updated_count += 1
+            for doc in target_docs:
+                doc_id = doc["_id"]
+                old_doc = doc.copy()
+
+                if "_id" in update_data: del update_data["_id"]
+                if "owner_id" in update_data: del update_data["owner_id"]
+                
+                doc.update(update_data)
+                self._db["collections"][collection_name][doc_id] = doc # Update in dict
+                
+                self._update_indexes_on_update(collection_name, old_doc, doc)
+                updated_count += 1
             return updated_count
 
     def delete_one(
@@ -253,19 +274,15 @@ class AstroDB:
             if collection_name not in self._db["collections"]:
                 return None
 
-            # 逆順にイテレートして削除してもインデックスがずれないようにする
-            for i in range(len(self._db["collections"][collection_name]) - 1, -1, -1):
-                doc = self._db["collections"][collection_name][i]
-                if doc.get(
-                    "owner_id"
-                ) == owner_id and query_engine.query_engine_instance.matches(
-                    doc, query
-                ):
-                    deleted_doc = self._db["collections"][collection_name].pop(i)
-                    self._update_indexes_on_delete(
-                        collection_name, deleted_doc
-                    )  # インデックス更新
-                    return deleted_doc
+            # まず、find_oneを使って削除対象のドキュメントを見つける
+            target_doc = self.find_one(collection_name, query, owner_id)
+            if not target_doc:
+                return None # ドキュメントが見つからないか、権限がない
+
+            doc_id = target_doc["_id"]
+            deleted_doc = self._db["collections"][collection_name].pop(doc_id) # Remove from dict
+            self._update_indexes_on_delete(collection_name, deleted_doc) # インデックス更新
+            return deleted_doc
             return None
 
     def delete_many(self, collection_name: str, query: dict, owner_id: str) -> int:
@@ -279,13 +296,14 @@ class AstroDB:
                 return 0
 
             deleted_count = 0
-            # 逆順にイテレートして削除してもインデックスがずれないようにする
-            for i in range(len(self._db["collections"][collection_name]) - 1, -1, -1):
-                doc = self._db["collections"][collection_name][i]
-                if doc.get("owner_id") == owner_id and query_engine.query_engine_instance.matches(doc, query):
-                    deleted_doc = self._db["collections"][collection_name].pop(i)
-                    self._update_indexes_on_delete(collection_name, deleted_doc)
-                    deleted_count += 1
+            # find_manyを使って削除対象のドキュメントをすべて見つける
+            target_docs = self.find_many(collection_name, query, owner_id)
+
+            for doc in target_docs:
+                doc_id = doc["_id"]
+                deleted_doc = self._db["collections"][collection_name].pop(doc_id) # Remove from dict
+                self._update_indexes_on_delete(collection_name, deleted_doc)
+                deleted_count += 1
             return deleted_count
 
     def find_one(self, collection_name: str, query: dict, owner_id: str) -> dict | None:
@@ -331,23 +349,39 @@ class AstroDB:
                     if field in doc:
                         self._indexes[collection_name][field][doc[field]] = doc
 
-    def _find_with_index(self, collection_name: str, query: dict) -> list[dict] | None:
+    def _find_with_index(self, collection_name: str, query: dict, owner_id: str) -> list[dict] | None:
+        logger.info(f"Attempting indexed find for collection: {collection_name}, query: {query}, owner_id: {owner_id}")
         """クエリに最適なインデックスを探して検索を行う。見つからなければNoneを返す"""
         if collection_name not in self._indexes:
+            logger.info(f"No indexes found for collection: {collection_name}")
             return None
 
-        # 最も選択率の高い（ユニークな値が多い）インデックスを探すロジック（今回は単純化）
+        # owner_idがクエリに含まれている場合、優先的にインデックスを使用
+        if "owner_id" in query and "owner_id" in self._indexes[collection_name]:
+            logger.info(f"Using owner_id index for query: {query["owner_id"]}")
+            index_map = self._indexes[collection_name]["owner_id"]
+            if query["owner_id"] in index_map:
+                logger.info(f"Found document by owner_id index.")
+                return [index_map[query["owner_id"]]]
+            else:
+                logger.info(f"No document found by owner_id index.")
+                return [] # owner_idが見つからない場合は空リスト
+
+        # その他のフィールドでインデックスを探す
         for field, value in query.items():
             if isinstance(value, dict): # $gt, $ltなどの演算子はインデックス検索の対象外（今回は単純化）
+                logger.info(f"Skipping index for complex query on field: {field}")
                 continue
             if field in self._indexes[collection_name]:
+                logger.info(f"Using index for field: {field} with value: {value}")
                 index_map = self._indexes[collection_name][field]
                 if value in index_map:
-                    # インデックスがヒットした場合、そのドキュメントをリストで返す
+                    logger.info(f"Found document by field index.")
                     return [index_map[value]]
                 else:
-                    # インデックスはあるが、値が見つからない場合は空リストを返す
+                    logger.info(f"No document found by field index.")
                     return []
+        logger.info(f"No suitable index found for query: {query}")
         return None # 適切なインデックスが見つからなかった
 
     def find(self, collection_name: str, query: dict, owner_id: str) -> list[dict]:
@@ -361,7 +395,7 @@ class AstroDB:
                 return []
 
             # 1. インデックスを利用した検索を試みる
-            indexed_results = self._find_with_index(collection_name, query)
+            indexed_results = self._find_with_index(collection_name, query, owner_id)
             if indexed_results is not None:
                 # インデックスで見つかった結果から、さらにowner_idとクエリでフィルタリング
                 final_results = []
@@ -372,7 +406,7 @@ class AstroDB:
 
             # 2. インデックスが利用できない場合はフルスキャン
             results = []
-            for doc in self._db["collections"][collection_name]:
+            for doc in self._db["collections"][collection_name].values():
                 # owner_idによるフィルタリング
                 if doc.get("owner_id") == owner_id:
                     # クエリによるフィルタリング
