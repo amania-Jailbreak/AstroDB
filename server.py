@@ -87,7 +87,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             if success:
                 response = {"status": "ok", "message": "User registration successful."}
             else:
-                response = {"status": "error", "message": "User already exists."}
+                response = {"status": "error", "message": "User already exists.", "code": ERROR_USER_ALREADY_EXISTS}
             return response
 
         if command == "LOGIN":
