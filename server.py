@@ -321,7 +321,7 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
             return response
 
         if command == "CHANGE_PASSWORD":
-            username = user_payload.get("sub")  # 認証済みのユーザー名
+            username = user_payload.get("sub")  # Authenticated username
             old_password = data.get("old_password")
             new_password = data.get("new_password")
             if username and old_password and new_password:
@@ -331,17 +331,17 @@ async def handle_command(websocket: WebSocket, data: dict) -> dict:
                 if success:
                     response = {
                         "status": "ok",
-                        "message": "パスワードが正常に変更されました。",
+                        "message": "Password changed successfully.",
                     }
                 else:
                     response = {
                         "status": "error",
-                        "message": "現在のパスワードが正しくありません。",
+                        "message": "Current password is incorrect.",
                     }
             else:
                 response = {
                     "status": "error",
-                    "message": "old_passwordとnew_passwordが必要です。",
+                    "message": "Old password and new password are required.",
                 }
             return response
 
